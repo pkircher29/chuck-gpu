@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Run any command on a Modal cloud GPU as if it were local"
 license = "MIT"
 requires-python = ">=3.11"
-dependencies = ["modal>=1.6"]
+dependencies = ["modal>=1.6", "pystray>=0.19", "pillow>=10"]
 
 [project.scripts]
 mgpu = "mgpu.cli:main"

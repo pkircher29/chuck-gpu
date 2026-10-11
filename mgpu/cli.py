@@ -383,16 +383,27 @@ def ensure_ui() -> None:
             log(f"dashboard: http://127.0.0.1:{port}")
             return
     exe = Path(sys.executable)
-    pyw = exe.with_name("pythonw.exe")
+    if getattr(sys, "frozen", False):
+        agent = exe.with_name("mgpu-agent.exe")
+        argv = [str(agent)] if agent.exists() else [str(exe), "ui", "--no-browser"]
+    else:
+        pyw = exe.with_name("pythonw.exe")
+        argv = [str(pyw if pyw.exists() else exe), "-m", "mgpu", "agent"]
     flags = 0
     if os.name == "nt":
         flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | 0x08000000
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     log_f = open(STATE_DIR / "ui.log", "ab")
-    subprocess.Popen([str(pyw if pyw.exists() else exe), "-m", "mgpu", "ui", "--no-browser"],
-                     stdout=log_f, stderr=log_f, stdin=subprocess.DEVNULL,
+    subprocess.Popen(argv, stdout=log_f, stderr=log_f, stdin=subprocess.DEVNULL,
                      creationflags=flags, close_fds=True)
     log(f"dashboard started: http://127.0.0.1:{port}")
+
+
+def modal_cli() -> list[str]:
+    """argv prefix that runs Modal's own CLI, also from the packaged .exe."""
+    if getattr(sys, "frozen", False):
+        return [str(Path(sys.executable).with_name("mgpu.exe")), "_modal"]
+    return [sys.executable, "-m", "modal"]
 
 
 def cmd_ui(args) -> int:
@@ -558,7 +569,7 @@ def cmd_login(args) -> int:
     else:
         # browser flow: opens modal.com, waits for approval, stores the token
         import subprocess
-        code = subprocess.call([sys.executable, "-m", "modal", "token", "new", "--activate"])
+        code = subprocess.call(modal_cli() + ["token", "new", "--activate"])
         if code:
             return code
         s = account.status()
@@ -599,6 +610,16 @@ def cmd_whoami(args) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+    for stream in (sys.stdout, sys.stderr):  # piped output on Windows defaults to cp1252
+        if stream and (stream.encoding or "").lower() not in ("utf-8", "utf8"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (AttributeError, ValueError):
+                pass
+    if argv[:1] == ["_modal"]:  # Modal's own CLI, bundled (used for browser login)
+        from modal.cli.entry_point import entrypoint_cli
+        sys.argv = ["modal"] + argv[1:]
+        return entrypoint_cli() or 0
     command: list[str] = []
     if "--" in argv:
         i = argv.index("--")
@@ -652,6 +673,9 @@ def main(argv: list[str] | None = None) -> int:
 
     wh = sub.add_parser("whoami", help="show which Modal account mgpu uses")
     wh.set_defaults(func=cmd_whoami)
+
+    ag = sub.add_parser("agent", help="run in the system tray: dashboard always on, job alerts")
+    ag.set_defaults(func=lambda a: __import__("mgpu.agent", fromlist=["main"]).main())
 
     args = p.parse_args(argv)
     args.command = command

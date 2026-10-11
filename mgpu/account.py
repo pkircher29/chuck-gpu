@@ -130,8 +130,9 @@ class BrowserLogin:
             env = dict(os.environ, PYTHONIOENCODING="utf-8", NO_COLOR="1", TERM="dumb",
                        COLUMNS="200")
             flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            from mgpu.cli import modal_cli
             self.proc = subprocess.Popen(
-                [sys.executable, "-m", "modal", "token", "new", "--activate"],
+                modal_cli() + ["token", "new", "--activate"],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                 env=env, creationflags=flags, text=True, encoding="utf-8", errors="replace")
             self.url, self.error, self.state = None, None, "waiting"

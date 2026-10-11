@@ -1,6 +1,7 @@
+*.egg-info/
+*.pyc
 .venv/
 __pycache__/
-*.pyc
-*.egg-info/
 build/
 dist/
+packaging/mgpu.ico

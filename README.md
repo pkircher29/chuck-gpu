@@ -29,6 +29,29 @@ mgpu login         # once: connect your Modal account
 mgpu smi           # check: nvidia-smi on a cloud T4
 ```
 
+### Windows app (runs in the background)
+
+Build it (or download `mgpu-windows.zip` from Releases), unzip, and run
+`install.ps1`:
+
+```
+powershell -ExecutionPolicy Bypass -File packaging\build.ps1     # → dist\mgpu-windows.zip
+powershell -ExecutionPolicy Bypass -File dist\mgpu\install.ps1  # per-user, no admin
+```
+
+That installs to `%LOCALAPPDATA%\Programs\mgpu` and adds it to your PATH:
+
+- **`mgpu.exe`**: the command line, same commands as above (no Python needed).
+- **`mgpu-agent.exe`**: sits in the system tray and starts with Windows. It
+  keeps the dashboard up at http://127.0.0.1:8770, shows the current job and
+  spend in its tooltip, pops a notification when a job finishes, and stops the
+  cloud GPU of a job whose terminal was closed, even with no browser open.
+  Click the icon for the dashboard; right-click for **Start with Windows** and
+  **Quit**.
+
+Uninstall: `install.ps1 -Uninstall` (keeps your Modal login and job history).
+Without the packaged app, `mgpu agent` runs the same tray agent from Python.
+
 ## Logging in
 
 Everything runs on — and is billed to — **your own** Modal account. Connect

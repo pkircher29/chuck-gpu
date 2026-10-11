@@ -26,7 +26,8 @@ from mgpu import account
 from mgpu.jobs import JOBS_DIR, TERMINAL, load_jobs, pid_alive, save_job, tail_log
 
 SETTINGS_PATH = Path.home() / ".mgpu" / "config.toml"
-SETTINGS_DEFAULTS = {"monthly_credit": 30.0, "ui_port": 8770, "auto_ui": True}
+SETTINGS_DEFAULTS = {"monthly_credit": 30.0, "ui_port": 8770, "auto_ui": True,
+                     "start_with_windows": True}
 STATIC = Path(__file__).parent / "static"
 
 GPU_RATE_KEYS = {
@@ -406,13 +407,18 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"error": msg[:400]}, 400)
 
 
-def serve(open_browser: bool = True, port: int | None = None) -> int:
+def start_server(port: int | None = None) -> ThreadingHTTPServer:
+    """Bind the dashboard (raises OSError if the port is taken); caller serves it."""
     global M
-    settings = load_settings()
-    port = port or int(settings["ui_port"])
-    M = Modal()
+    port = port or int(load_settings()["ui_port"])
+    M = M or Modal()
+    return ThreadingHTTPServer(("127.0.0.1", port), Handler)
+
+
+def serve(open_browser: bool = True, port: int | None = None) -> int:
+    port = port or int(load_settings()["ui_port"])
     try:
-        httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+        httpd = start_server(port)
     except OSError as e:
         print(f"[mgpu ui] port {port} busy ({e}) — is the dashboard already running?",
               file=sys.stderr)
