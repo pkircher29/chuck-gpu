@@ -38,7 +38,7 @@
 }
 
 /* Studio — broadcast-console aesthetic from Auto-KJ */
-:root[data-theme="studio"] {
+:root[data-theme="grey"] {
   --bg: #0c0f11; --panel: #15191c; --panel-2: #1a1f22; --line: #353d42; --line-2: #414a50;
   --text: #edf1f2; --muted: #98a3a8; --faint: #69747a;
   --accent: #d49a42; --accent-soft: #2a2114; --good: #63c6c0; --good-soft: #13261c;
@@ -50,7 +50,7 @@
 }
 
 /* body: charcoal with pinstripe + warm radial glow */
-:root[data-theme="studio"] body {
+:root[data-theme="grey"] body {
   background:
     radial-gradient(circle at 50% -20%, rgba(212,154,66,0.08), transparent 42%),
     repeating-linear-gradient(90deg, rgba(255,255,255,0.008) 0 1px, transparent 1px 4px),
@@ -58,7 +58,7 @@
 }
 
 /* header: brushed-metal gradient with amber→teal accent bar */
-:root[data-theme="studio"] header {
+:root[data-theme="grey"] header {
   background:
     linear-gradient(180deg, rgba(255,255,255,0.035), transparent 44%),
     linear-gradient(180deg, #252b2f 0%, #111518 100%);
@@ -70,7 +70,7 @@
   padding: 14px 16px;
   position: relative;
 }
-:root[data-theme="studio"] header::after {
+:root[data-theme="grey"] header::after {
   content: "";
   position: absolute;
   left: 0; right: 0; bottom: 0;
@@ -80,7 +80,7 @@
 }
 
 /* logo: knurled metal knob */
-:root[data-theme="studio"] .brand svg {
+:root[data-theme="grey"] .brand svg {
   width: 30px; height: 30px;
   border-radius: 50%;
   background: radial-gradient(circle at 40% 35%, #59636a 0 8%, #242a2e 22%, #090b0d 70%);
@@ -90,14 +90,14 @@
 }
 
 /* brand name: uppercase, wide tracking */
-:root[data-theme="studio"] .brand h1 {
+:root[data-theme="grey"] .brand h1 {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-size: 15px;
   font-weight: 700;
   color: #edf1f2;
 }
-:root[data-theme="studio"] .brand small {
+:root[data-theme="grey"] .brand small {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 9px;
@@ -105,7 +105,7 @@
 }
 
 /* cards: dark panels with brushed-metal sheen and deep shadows */
-:root[data-theme="studio"] .card {
+:root[data-theme="grey"] .card {
   background: linear-gradient(180deg, rgba(255,255,255,0.018), transparent 34%), #15191c;
   border: 1px solid #353d42;
   border-radius: 5px;
@@ -113,7 +113,7 @@
 }
 
 /* labels: uppercase, wide tracking, monospace feel */
-:root[data-theme="studio"] .label {
+:root[data-theme="grey"] .label {
   letter-spacing: 0.13em;
   text-transform: uppercase;
   font-size: 10px;
@@ -122,7 +122,7 @@
 }
 
 /* section headers: metal bar with colored accent strip */
-:root[data-theme="studio"] .section h2 {
+:root[data-theme="grey"] .section h2 {
   letter-spacing: 0.13em;
   text-transform: uppercase;
   font-size: 10px;
@@ -130,14 +130,14 @@
 }
 
 /* stat numbers: warm amber */
-:root[data-theme="studio"] .big {
+:root[data-theme="grey"] .big {
   color: #d7a553;
   text-shadow: 0 0 12px rgba(212,154,66,0.15);
 }
-:root[data-theme="studio"] .big.g, :root[data-theme="studio"] .sv.g { color: #63c6c0 !important; }
+:root[data-theme="grey"] .big.g, :root[data-theme="grey"] .sv.g { color: #63c6c0 !important; }
 
 /* who pill: metal bezel */
-:root[data-theme="studio"] .who {
+:root[data-theme="grey"] .who {
   border: 1px solid #353d42;
   border-radius: 3px;
   background: linear-gradient(180deg, #293035, #171b1e);
@@ -145,7 +145,7 @@
 }
 
 /* theme button: matches other buttons */
-:root[data-theme="studio"] .theme-btn {
+:root[data-theme="grey"] .theme-btn {
   border: 1px solid #414a50;
   border-radius: 4px;
   background: linear-gradient(180deg, #31393e, #1a1f22);
@@ -153,25 +153,25 @@
 }
 
 /* buttons: chunky gradient with press animation */
-:root[data-theme="studio"] button {
+:root[data-theme="grey"] button {
   border: 1px solid #414a50;
   border-radius: 4px;
   background: linear-gradient(180deg, #31393e, #1a1f22);
   color: #c7cfd2;
   box-shadow: inset 0 1px rgba(255,255,255,0.06), 0 2px 3px rgba(0,0,0,0.34);
 }
-:root[data-theme="studio"] button:hover:not(:disabled) {
+:root[data-theme="grey"] button:hover:not(:disabled) {
   border-color: #667278;
   color: #fff;
 }
-:root[data-theme="studio"] button:active:not(:disabled) {
+:root[data-theme="grey"] button:active:not(:disabled) {
   background: #161a1d;
   box-shadow: inset 0 2px 4px #050607;
   transform: translateY(1px);
 }
 
 /* primary button: amber */
-:root[data-theme="studio"] button.primary {
+:root[data-theme="grey"] button.primary {
   color: #17130d;
   border-color: #b68135;
   background: linear-gradient(180deg, #e3ad57, #a86e28);
@@ -180,31 +180,31 @@
 }
 
 /* stop/kill buttons: dark metal, red text */
-:root[data-theme="studio"] button.stop,
-:root[data-theme="studio"] button.kill {
+:root[data-theme="grey"] button.stop,
+:root[data-theme="grey"] button.kill {
   border: 1px solid #414a50;
   background: linear-gradient(180deg, #31393e, #1a1f22);
   color: #e85d4a;
 }
 
 /* inputs: deep inset wells */
-:root[data-theme="studio"] select,
-:root[data-theme="studio"] input {
+:root[data-theme="grey"] select,
+:root[data-theme="grey"] input {
   background: #080b0c;
   color: #e8edef;
   border: 1px solid #414a50;
   border-radius: 3px;
   box-shadow: inset 0 2px 5px rgba(0,0,0,0.82), 0 1px rgba(255,255,255,0.025);
 }
-:root[data-theme="studio"] select:focus,
-:root[data-theme="studio"] input:focus {
+:root[data-theme="grey"] select:focus,
+:root[data-theme="grey"] input:focus {
   border-color: #b68135;
   outline: none;
   box-shadow: inset 0 2px 5px rgba(0,0,0,0.82), 0 0 0 1px rgba(212,154,66,0.18);
 }
 
 /* picker: metal console panel */
-:root[data-theme="studio"] .picker {
+:root[data-theme="grey"] .picker {
   background:
     linear-gradient(90deg, rgba(255,255,255,0.025), transparent 16%, transparent 84%, rgba(255,255,255,0.02)),
     linear-gradient(180deg, #22282c, #111517);
@@ -212,11 +212,11 @@
   border-radius: 6px;
   box-shadow: inset 0 1px rgba(255,255,255,0.05), inset 0 -1px #060708, 0 5px 14px rgba(0,0,0,0.38);
 }
-:root[data-theme="studio"] .picker.picked {
+:root[data-theme="grey"] .picker.picked {
   border-color: #b68135;
   box-shadow: 0 0 0 3px rgba(212,154,66,0.12), inset 0 1px rgba(255,255,255,0.05);
 }
-:root[data-theme="studio"] .spec {
+:root[data-theme="grey"] .spec {
   background: #080b0c;
   border: 1px solid #353d42;
   border-radius: 3px;
@@ -224,7 +224,7 @@
 }
 
 /* pills: monospace, inset */
-:root[data-theme="studio"] .pill {
+:root[data-theme="grey"] .pill {
   font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
   letter-spacing: 0.06em;
   border: 1px solid #394147;
@@ -232,24 +232,24 @@
   background: #101416;
   box-shadow: inset 0 1px 3px rgba(0,0,0,0.8);
 }
-:root[data-theme="studio"] .pill.running { color: #73d6ce; }
-:root[data-theme="studio"] .pill.done { color: #73d6ce; }
-:root[data-theme="studio"] .pill.failed, :root[data-theme="studio"] .pill.lost { color: #e85d4a; }
-:root[data-theme="studio"] .pill.stopped { color: #ffce78; }
-:root[data-theme="studio"] .pill.uploading, :root[data-theme="studio"] .pill.starting, :root[data-theme="studio"] .pill.downloading { color: #d7a553; }
+:root[data-theme="grey"] .pill.running { color: #73d6ce; }
+:root[data-theme="grey"] .pill.done { color: #73d6ce; }
+:root[data-theme="grey"] .pill.failed, :root[data-theme="grey"] .pill.lost { color: #e85d4a; }
+:root[data-theme="grey"] .pill.stopped { color: #ffce78; }
+:root[data-theme="grey"] .pill.uploading, :root[data-theme="grey"] .pill.starting, :root[data-theme="grey"] .pill.downloading { color: #d7a553; }
 
 /* tags */
-:root[data-theme="studio"] .tag { border-radius: 3px; }
-:root[data-theme="studio"] .tag.mgpu { color: #d7a553; }
+:root[data-theme="grey"] .tag { border-radius: 3px; }
+:root[data-theme="grey"] .tag.mgpu { color: #d7a553; }
 
 /* progress bar: amber */
-:root[data-theme="studio"] .bar > i { background: #d49a42; }
-:root[data-theme="studio"] .meter > i { background: #63c6c0; }
-:root[data-theme="studio"] .meter.low > i { background: #ffce78; }
-:root[data-theme="studio"] .meter.out > i { background: #e85d4a; }
+:root[data-theme="grey"] .bar > i { background: #d49a42; }
+:root[data-theme="grey"] .meter > i { background: #63c6c0; }
+:root[data-theme="grey"] .meter.low > i { background: #ffce78; }
+:root[data-theme="grey"] .meter.out > i { background: #e85d4a; }
 
 /* log: deep black console */
-:root[data-theme="studio"] pre.log {
+:root[data-theme="grey"] pre.log {
   background: #050708;
   border: 1px solid #2a3338;
   border-radius: 3px;
@@ -258,46 +258,46 @@
 }
 
 /* job cards: panel with accent */
-:root[data-theme="studio"] .job {
+:root[data-theme="grey"] .job {
   border: 1px solid #353d42;
   background: linear-gradient(180deg, rgba(255,255,255,0.012), transparent 30%), #15191c;
 }
 
 /* steps: amber active */
-:root[data-theme="studio"] .steps span { border-top-color: #1c2226; }
-:root[data-theme="studio"] .steps span.done { border-top-color: rgba(99,198,192,0.4); }
-:root[data-theme="studio"] .steps span.now { border-top-color: #d49a42; color: #d7a553; }
+:root[data-theme="grey"] .steps span { border-top-color: #1c2226; }
+:root[data-theme="grey"] .steps span.done { border-top-color: rgba(99,198,192,0.4); }
+:root[data-theme="grey"] .steps span.now { border-top-color: #d49a42; color: #d7a553; }
 
 /* table headers */
-:root[data-theme="studio"] th {
+:root[data-theme="grey"] th {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 10px;
   color: #7e898f;
 }
-:root[data-theme="studio"] tbody.gpus tr.sel td { background: rgba(212,154,66,0.08); }
-:root[data-theme="studio"] tbody.gpus tr.sel td:first-child { box-shadow: inset 3px 0 0 #d49a42; }
-:root[data-theme="studio"] tbody.gpus tr:hover td { background: rgba(99,198,192,0.04); }
+:root[data-theme="grey"] tbody.gpus tr.sel td { background: rgba(212,154,66,0.08); }
+:root[data-theme="grey"] tbody.gpus tr.sel td:first-child { box-shadow: inset 3px 0 0 #d49a42; }
+:root[data-theme="grey"] tbody.gpus tr:hover td { background: rgba(99,198,192,0.04); }
 
 /* scrollbar */
-:root[data-theme="studio"] ::-webkit-scrollbar { width: 8px; height: 8px; }
-:root[data-theme="studio"] ::-webkit-scrollbar-track { background: #090c0e; }
-:root[data-theme="studio"] ::-webkit-scrollbar-thumb { background: #424b50; border-radius: 2px; border: 1px solid #101416; }
-:root[data-theme="studio"] ::-webkit-scrollbar-thumb:hover { background: #596168; }
+:root[data-theme="grey"] ::-webkit-scrollbar { width: 8px; height: 8px; }
+:root[data-theme="grey"] ::-webkit-scrollbar-track { background: #090c0e; }
+:root[data-theme="grey"] ::-webkit-scrollbar-thumb { background: #424b50; border-radius: 2px; border: 1px solid #101416; }
+:root[data-theme="grey"] ::-webkit-scrollbar-thumb:hover { background: #596168; }
 
 /* focus */
-:root[data-theme="studio"] :focus-visible { outline: 1px solid #efb65d; outline-offset: 2px; }
+:root[data-theme="grey"] :focus-visible { outline: 1px solid #efb65d; outline-offset: 2px; }
 
 /* split bar colors */
-:root[data-theme="studio"] .split { background: #1c2226; }
+:root[data-theme="grey"] .split { background: #1c2226; }
 
 /* sandbox rows */
-:root[data-theme="studio"] .sb-row { border-color: rgba(53,61,66,0.6); }
-:root[data-theme="studio"] .sb-id .short { color: #d7a553; }
-:root[data-theme="studio"] .sb-tag { background: #101416; border: 1px solid #353d42; }
+:root[data-theme="grey"] .sb-row { border-color: rgba(53,61,66,0.6); }
+:root[data-theme="grey"] .sb-id .short { color: #d7a553; }
+:root[data-theme="grey"] .sb-tag { background: #101416; border: 1px solid #353d42; }
 
 /* footer */
-:root[data-theme="studio"] .foot .card { background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent 20%), #131619; }
+:root[data-theme="grey"] .foot .card { background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent 20%), #131619; }
 
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
@@ -373,6 +373,11 @@ select:focus, input:focus, button:focus-visible { outline: 2px solid color-mix(i
 /* stats */
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
 @media (max-width: 760px) { .stats { grid-template-columns: 1fr 1fr; } }
+.usage { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+@media (max-width: 760px) { .usage { grid-template-columns: 1fr; } }
+.usage .row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; margin-top: 8px; }
+.usage .row b { font-variant-numeric: tabular-nums; }
+.sb-use { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .meter { height: 6px; background: var(--bar-bg); border-radius: 3px; overflow: hidden; margin: 10px 0 6px; }
 .meter > i { display: block; height: 100%; background: var(--good); transition: width .4s; }
 .meter.low > i { background: var(--warn); }
@@ -488,6 +493,26 @@ tbody.gpus tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   </div>
 
   <div id="main" hidden>
+    <div class="section"><h2>Live usage</h2><span class="sub">this PC and billed cloud time</span></div>
+    <div class="usage">
+      <div class="card">
+        <div class="label">This PC</div>
+        <div class="row"><span>Chuck GPU CPU</span><b id="locAppCpu">—</b></div>
+        <div class="meter" id="locAppCpuBar"><i style="width:0"></i></div>
+        <div class="row"><span>Machine CPU</span><b id="locCpu">—</b></div>
+        <div class="meter" id="locCpuBar"><i style="width:0"></i></div>
+        <div class="row"><span>Memory</span><b id="locMem">—</b></div>
+        <div class="meter" id="locMemBar"><i style="width:0"></i></div>
+        <div class="row"><span>Chuck GPU RAM</span><b id="locAppMem">—</b></div>
+        <div class="row"><span>Disk</span><b id="locDisk">—</b></div>
+        <div class="meter" id="locDiskBar"><i style="width:0"></i></div>
+      </div>
+      <div class="card">
+        <div class="label">Cloud sandboxes</div>
+        <div class="sub" id="cloudUse">No live sandboxes. Modal does not publish GPU utilization percent — only billed GPU, CPU-core, and memory time.</div>
+      </div>
+    </div>
+
     <div class="card picker" id="picker">
       <div>
         <div class="label">GPU for the next job</div>
@@ -612,8 +637,8 @@ function initTheme() {
   if (saved !== "auto") document.documentElement.dataset.theme = saved;
   $("themeBtn").innerHTML = THEME_LABELS[saved] || THEME_LABELS["auto"];
 }
-const THEMES = ["auto", "light", "dark", "studio"];
-const THEME_LABELS = {"auto": "&#9681;", "light": "&#9728;", "dark": "&#9789;", "studio": "&#9836;"};
+const THEMES = ["auto", "light", "dark", "grey"];
+const THEME_LABELS = {"auto": "&#9681;", "light": "&#9728;", "dark": "&#9789;", "grey": "&#9836;"};
 $("themeBtn").onclick = () => {
   const cur = document.documentElement.dataset.theme || "auto";
   const idx = THEMES.indexOf(cur);
@@ -626,6 +651,40 @@ $("themeBtn").onclick = () => {
 initTheme();
 
 // ── sandboxes ──────────────────────────────────────────────────────────────
+function pctBar(id, pct) {
+  const el = $(id);
+  if (!el) return;
+  const p = Math.max(0, Math.min(100, Number(pct) || 0));
+  el.querySelector("i").style.width = p + "%";
+  el.className = "meter" + (p >= 90 ? " out" : p >= 75 ? " low" : "");
+}
+function renderLocal(s) {
+  const L = s.local;
+  if (!L || L.error) {
+    $("locCpu").textContent = L?.error || "—";
+    return;
+  }
+  $("locAppCpu").textContent = L.app_cpu_pct.toFixed(1) + "%";
+  $("locCpu").textContent = L.cpu_pct.toFixed(1) + "%";
+  $("locMem").textContent = L.mem_used_gb.toFixed(1) + " / " + L.mem_total_gb.toFixed(1) + " GB";
+  $("locAppMem").textContent = L.app_rss_mb.toFixed(0) + " MB";
+  $("locDisk").textContent = L.disk_used_gb.toFixed(0) + " / " + L.disk_total_gb.toFixed(0) + " GB";
+  pctBar("locAppCpuBar", L.app_cpu_pct);
+  pctBar("locCpuBar", L.cpu_pct);
+  pctBar("locMemBar", L.mem_pct);
+  pctBar("locDiskBar", L.disk_pct);
+  const sbs = s.sandboxes || [];
+  if (!sbs.length) {
+    $("cloudUse").textContent = "No live sandboxes. Modal does not publish GPU utilization percent — only billed GPU, CPU-core, and memory time.";
+    return;
+  }
+  $("cloudUse").innerHTML = sbs.map(sb => {
+    const u = sb.usage || {};
+    if (u.error) return `<div class="row"><span>${esc(sb.id.slice(0, 16))}</span><b>${esc(u.error)}</b></div>`;
+    const gpu = u.gpu_type ? esc(u.gpu_type) + " · " : "";
+    return `<div class="row"><span>${esc(sb.id.slice(0, 16))}</span><b class="sb-use">${gpu}${dur(u.gpu_s)} GPU · ${dur(u.cpu_core_s)} CPU-core · ${Number(u.mem_gib_s || 0).toFixed(0)} GiB·s mem</b></div>`;
+  }).join("") + '<div class="sub" style="margin-top:8px">Modal does not publish live GPU %. These are billed resource-seconds since the sandbox started.</div>';
+}
 function renderSandboxes(s) {
   const sbs = s.sandboxes || [];
   const jobSids = new Set((s.jobs || []).filter(j => j.sandbox_id && j.estimate !== undefined).map(j => j.sandbox_id));
@@ -772,6 +831,7 @@ function render() {
   const s = state, lives = liveJobs();
   const liveCost = lives.reduce((a, j) => a + (j.cost || 0), 0);
   renderPicker(s);
+  renderLocal(s);
   renderSandboxes(s);
 
   const c = s.credit;

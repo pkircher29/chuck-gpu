@@ -161,8 +161,22 @@ class Modal:
                 tags = sb.get_tags() or {}
             except Exception:
                 pass
-            out.append({"id": sb.object_id, "tags": tags})
+            out.append({"id": sb.object_id, "tags": tags,
+                         "usage": self.sandbox_usage(sb.object_id)})
         return out
+
+    def sandbox_usage(self, sandbox_id: str) -> dict | None:
+        """Metered CPU-core and memory time. Modal does not publish live GPU %."""
+        try:
+            r = self._usage_rpc(sandbox_id)
+        except Exception as e:
+            return {"error": f"{type(e).__name__}: {e}"[:160]}
+        return {
+            "gpu_type": r.gpu_type or None,
+            "gpu_s": round(r.gpu_nanosecs / 1e9, 1),
+            "cpu_core_s": round(r.cpu_core_nanosecs / 1e9, 1),
+            "mem_gib_s": round(r.mem_gib_nanosecs / 1e9, 1),
+        }
 
     def kill_sandbox(self, sandbox_id: str) -> None:
         import modal
@@ -225,6 +239,32 @@ def estimate(job: dict, jobs: list[dict], cost_now: float, rate_s: float) -> dic
             "basis": basis, "max_total": max_total}
 
 
+def local_host_metrics() -> dict:
+    """This machine, not the cloud GPU. psutil is optional."""
+    try:
+        import psutil
+    except ImportError:
+        return {"error": "psutil not installed"}
+    if not getattr(local_host_metrics, "_primed", False):
+        psutil.cpu_percent(interval=None)
+        psutil.Process().cpu_percent(interval=None)
+        local_host_metrics._primed = True
+    proc = psutil.Process()
+    vm = psutil.virtual_memory()
+    du = psutil.disk_usage(str(Path.home().anchor or "C:\\"))
+    return {
+        "cpu_pct": psutil.cpu_percent(interval=None),
+        "app_cpu_pct": proc.cpu_percent(interval=None),
+        "app_rss_mb": round(proc.memory_info().rss / (1024 * 1024), 1),
+        "mem_used_gb": round(vm.used / (1024 ** 3), 2),
+        "mem_total_gb": round(vm.total / (1024 ** 3), 2),
+        "mem_pct": vm.percent,
+        "disk_used_gb": round(du.used / (1024 ** 3), 1),
+        "disk_total_gb": round(du.total / (1024 ** 3), 1),
+        "disk_pct": du.percent,
+    }
+
+
 def build_state() -> dict:
     assert M is not None
     settings = load_settings()
@@ -234,7 +274,8 @@ def build_state() -> dict:
     acct = account.status()
     base = {"now": time.time(), "account": acct, "login": BROWSER_LOGIN.info(),
             "monthly_credit": float(settings["monthly_credit"]),
-            "settings_path": str(SETTINGS_PATH)}
+            "settings_path": str(SETTINGS_PATH),
+            "local": local_host_metrics()}
     if not acct["logged_in"]:
         return base
     try:
@@ -384,10 +425,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self._local_host():
             return
-        if self.path in ("/", "/index.html"):
+        path = self.path.split("?", 1)[0]
+        if path in ("/", "/index.html"):
             body = (STATIC / "index.html").read_bytes()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
