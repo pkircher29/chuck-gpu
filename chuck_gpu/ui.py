@@ -146,6 +146,7 @@ class Modal:
 
     def list_sandboxes(self) -> list[dict]:
         """All live sandboxes on this workspace (not just chuck-gpu jobs)."""
+        import modal
         try:
             sbs = list(modal.Sandbox.list())
         except Exception:
