@@ -4,17 +4,17 @@ version = "0.1.0"
 description = "Run any command on a Modal cloud GPU as if it were local"
 license = "MIT"
 requires-python = ">=3.11"
-dependencies = ["modal>=1.6", "pystray>=0.19", "pillow>=10"]
+dependencies = ["modal>=1.6", "pystray>=0.19", "pillow>=10", "psutil>=5"]
 
 [project.scripts]
-chuck-gpu = "chuck-gpu.cli:main"
+chuck-gpu = "chuck_gpu.cli:main"
 
 [build-system]
 requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["chuck-gpu"]
+packages = ["chuck_gpu"]
 
 [tool.setuptools.package-data]
-chuck-gpu = ["static/*"]
+chuck_gpu = ["static/*"]
