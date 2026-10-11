@@ -76,11 +76,18 @@ mgpu stores no credentials of its own and sends them only to Modal.
 | | |
 |---|---|
 | `mgpu run [opts] -- <cmd>` | sync up, run on GPU, sync results down |
-| `mgpu smi [--gpu A100]` | `nvidia-smi` on a cloud GPU (quick check) |
+| `mgpu smi [--gpu A100]` | `nvidia-smi` on a cloud GPU (quick check, cheapest by default) |
 | `mgpu ls` | list remote workspaces |
 | `mgpu rm [--key NAME]` | delete this folder's remote workspace |
 | `mgpu ui` | dashboard: login, live job, spend, remaining credit |
 | `mgpu login` / `logout` / `whoami` | manage the connected Modal account |
+
+**Which GPU:** every job runs on the **cheapest** GPU (by your workspace's
+live prices, normally the T4) unless you deliberately choose another. Pick one
+in the dashboard's *GPU for the next job* dropdown (or the GPU table, or the
+tray menu): it applies to the **next `mgpu run` only**, then resets to the
+cheapest. `--gpu NAME` or `gpu = "NAME"` in a project's `mgpu.toml` also
+choose one. Order: `--gpu` › dashboard pick › `mgpu.toml` › cheapest.
 
 `run` options: `--gpu T4|L4|A10G|L40S|A100|A100-80GB|H100|H200|B200`,
 `--image torch|torch-devel|cuda|cuda-devel|<any registry image>`,

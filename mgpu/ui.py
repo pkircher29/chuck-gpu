@@ -22,7 +22,7 @@ from decimal import Decimal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from mgpu import account
+from mgpu import account, gpus
 from mgpu.jobs import JOBS_DIR, TERMINAL, load_jobs, pid_alive, save_job, tail_log
 
 SETTINGS_PATH = Path.home() / ".mgpu" / "config.toml"
@@ -30,12 +30,7 @@ SETTINGS_DEFAULTS = {"monthly_credit": 30.0, "ui_port": 8770, "auto_ui": True,
                      "start_with_windows": True}
 STATIC = Path(__file__).parent / "static"
 
-GPU_RATE_KEYS = {
-    "T4": "gpu_hour_cost_t4", "L4": "gpu_hour_cost_l4", "A10G": "gpu_hour_cost_a10g",
-    "L40S": "gpu_hour_cost_l40s", "A100": "gpu_hour_cost_a100_40gb",
-    "A100-80GB": "gpu_hour_cost_a100_80gb", "H100": "gpu_hour_cost_h100",
-    "H200": "gpu_hour_cost_h200", "B200": "gpu_hour_cost_b200",
-}
+GPU_RATE_KEYS = {g: key for g, (key, *_) in gpus.CATALOG.items()}
 # Sandbox defaults Modal bills at minimum when nothing larger is requested
 DEFAULT_CORES, DEFAULT_MEM_GIB = 0.125, 0.125
 NS_PER_HOUR = 3_600 * 1e9
@@ -98,6 +93,10 @@ class Modal:
         r = modal.Workspace.from_context().billing.rates()
         self.rates = {k: float(r[k]) for k in r}
         self.rates_at = time.time()
+        try:
+            gpus.save_rates(self.rates)  # so `mgpu run` knows today's cheapest GPU
+        except OSError:
+            pass
 
     def refresh_summary(self) -> None:
         if time.time() - self.summary_at < 60:
@@ -119,10 +118,14 @@ class Modal:
     def gpu_rate_hr(self, gpu: str) -> float:
         return self.rates.get(GPU_RATE_KEYS.get(gpu, ""), 0.0)
 
-    def nominal_rate_hr(self, gpu: str) -> float:
+    def nominal_rate_hr(self, gpu: str, cpu: float | None = None,
+                        memory_mib: int | None = None) -> float:
+        """$/hr of a sandbox with these reservations (Modal bills at least these)."""
+        cores = float(cpu) if cpu else DEFAULT_CORES
+        mem_gib = memory_mib / 1024 if memory_mib else DEFAULT_MEM_GIB
         return (self.gpu_rate_hr(gpu)
-                + DEFAULT_CORES * self.rates.get("cpu_hour_cost_sandbox", 0.1419)
-                + DEFAULT_MEM_GIB * self.rates.get("mem_gib_hour_cost_sandbox", 0.024))
+                + cores * self.rates.get("cpu_hour_cost_sandbox", 0.1419)
+                + mem_gib * self.rates.get("mem_gib_hour_cost_sandbox", 0.024))
 
     def sandbox_cost(self, sandbox_id: str, gpu_hint: str) -> dict | None:
         try:
@@ -253,20 +256,37 @@ def build_state() -> dict:
             u = M.usage.get(sid)
             if u and "cost" in u:
                 cost = u["cost"]
-        nominal_hr = M.nominal_rate_hr(job["gpu"])
-        if cost is None and job.get("started"):
+        nominal_hr = M.nominal_rate_hr(job["gpu"], job.get("cpu"), job.get("memory"))
+        if job.get("started"):
+            # Modal bills at least the reserved GPU/CPU/memory for as long as the
+            # sandbox runs; its per-sandbox usage figure can lag far behind on
+            # long jobs, so never show less than that floor
             end = job.get("gpu_released") or job.get("ended") or now
-            cost = max(0.0, end - job["started"]) * nominal_hr / 3600
+            floor = max(0.0, end - job["started"]) * nominal_hr / 3600
+            cost = floor if cost is None else max(cost, floor)
 
         row = {k: job.get(k) for k in ("id", "dir", "workspace", "command", "gpu", "image",
                                        "phase", "detail", "created", "started", "ended",
                                        "running_since", "exit_code", "sandbox_id", "progress",
-                                       "upload", "download", "timeout")}
+                                       "upload", "download", "timeout", "cpu", "memory",
+                                       "gpu_source")}
+        if row["progress"] and now - row["progress"].get("at", 0) > 300:
+            row["progress"] = None  # no progress output for 5 min: don't show a stale bar
         row["cost"] = cost
+        u = M.usage.get(sid) if sid else None
+        if u and "cost" in u and cost is not None and u["cost"] >= cost * 0.95:
+            row["breakdown"] = {"gpu": u["gpu_cost"], "cpu": u["cpu_cost"], "mem": u["mem_cost"]}
+        elif cost and job.get("started"):  # the reservation floor is what's shown: split that
+            hrs = max(0.0, (job.get("gpu_released") or job.get("ended") or now) - job["started"]) / 3600
+            cores = float(job.get("cpu") or DEFAULT_CORES)
+            mem_gib = (job.get("memory") or DEFAULT_MEM_GIB * 1024) / 1024
+            row["breakdown"] = {
+                "gpu": hrs * M.gpu_rate_hr(job["gpu"]),
+                "cpu": hrs * cores * M.rates.get("cpu_hour_cost_sandbox", 0),
+                "mem": hrs * mem_gib * M.rates.get("mem_gib_hour_cost_sandbox", 0)}
         row["rate_hr"] = nominal_hr
         if live:
             rate_s = nominal_hr / 3600
-            u = M.usage.get(sid) if sid else None
             if u and u.get("prev") and u["prev"].get("cost") is not None:
                 dt = u["at"] - u["prev"]["at"]
                 if dt > 1:
@@ -298,6 +318,11 @@ def build_state() -> dict:
         "mgpu_today": mgpu_today, "mgpu_month": mgpu_month,
         "summary": s, "summary_error": M.summary_error, "credit": credit,
         "rates": {g: M.gpu_rate_hr(g) for g in GPU_RATE_KEYS},
+        "gpus": gpus.catalog(M.rates),
+        "next_gpu": gpus.get_next(),
+        "default_gpu": gpus.cheapest(M.rates),
+        "cpu_rate_hr": M.rates.get("cpu_hour_cost_sandbox"),
+        "mem_rate_hr": M.rates.get("mem_gib_hour_cost_sandbox"),
     }
 
 
@@ -358,6 +383,12 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_error(403)
         if parts[:2] == ["api", "account"] and len(parts) == 3:
             return self._account(parts[2])
+        if self.path == "/api/next-gpu":
+            try:
+                gpus.set_next(self._body().get("gpu") or None)
+            except ValueError as e:
+                return self._json({"error": str(e)}, 400)
+            return self._json({"ok": True, "next_gpu": gpus.get_next()})
         if self.path == "/api/settings":
             try:
                 credit = float(self._body().get("monthly_credit"))

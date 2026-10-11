@@ -42,7 +42,7 @@ IMAGES = {
     "cuda": ("nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04", "3.11"),
     "cuda-devel": ("nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04", "3.11"),
 }
-GPUS = ["T4", "L4", "A10G", "L40S", "A100", "A100-80GB", "H100", "H200", "B200"]
+from mgpu.gpus import GPUS  # noqa: E402  (catalog + prices live in gpus.py)
 
 DEFAULT_EXCLUDES = [
     ".git", ".hg", ".svn", ".venv", "venv", "env", "node_modules", "__pycache__",
@@ -51,7 +51,7 @@ DEFAULT_EXCLUDES = [
 ]
 
 DEFAULTS = {
-    "gpu": "T4",
+    "gpu": None,  # None = the dashboard pick, else the cheapest (see gpus.py)
     "image": "torch",
     "add_python": None,
     "pip": [],
@@ -416,6 +416,19 @@ def cmd_ui(args) -> int:
 def cmd_run(args) -> int:
     root = Path(args.dir).resolve()
     cfg = load_config(root)
+    if not args.command:
+        sys.exit("nothing to run: mgpu run [options] -- <command ...>")
+    # GPU: --gpu, else the one-shot dashboard pick, else mgpu.toml, else cheapest
+    from mgpu import gpus
+    toml_gpu = cfg["gpu"]
+    if args.gpu:
+        gpu_source = "--gpu"
+    elif (picked := gpus.take_next()):
+        cfg["gpu"], gpu_source = picked, "picked in the dashboard (next job resets to cheapest)"
+    elif toml_gpu:
+        gpu_source = "mgpu.toml"
+    else:
+        cfg["gpu"], gpu_source = gpus.cheapest(), "cheapest"
     for field in ("gpu", "image", "timeout", "add_python", "cpu", "memory"):
         if getattr(args, field, None):
             cfg[field] = getattr(args, field)
@@ -428,8 +441,10 @@ def cmd_run(args) -> int:
         cfg["env"][k] = v
     if args.no_download:
         cfg["download"] = False
-    if not args.command:
-        sys.exit("nothing to run: mgpu run [options] -- <command ...>")
+    if cfg["gpu"] not in gpus.CATALOG:
+        sys.exit(f"unknown GPU {cfg['gpu']!r} (choose from {', '.join(gpus.GPUS)})")
+    rate = gpus.gpu_rates()[cfg["gpu"]]
+    log(f"GPU: {cfg['gpu']} (${rate:.2f}/hr, {gpus.CATALOG[cfg['gpu']][1]} GB) — {gpu_source}")
 
     import modal
     from mgpu.jobs import JobRecorder
@@ -437,6 +452,7 @@ def cmd_run(args) -> int:
     ensure_ui()
     job = JobRecorder(root=root, key=key, command=args.command, gpu=cfg["gpu"],
                       image=cfg["image"], timeout=int(cfg["timeout"]))
+    job.update(gpu_source=gpu_source, cpu=cfg["cpu"], memory=cfg["memory"])
     try:
         vol = modal.Volume.from_name(VOLUME_NAME, create_if_missing=True)
         log(f"workspace {key}  ←  {root}")
@@ -520,7 +536,8 @@ def cmd_run(args) -> int:
 def cmd_smi(args) -> int:
     cfg = dict(DEFAULTS)
     cfg["image"] = "cuda"
-    gpu = args.gpu or "T4"
+    from mgpu import gpus
+    gpu = args.gpu or gpus.cheapest()
     log(f"starting {gpu} sandbox …")
     sb, _ = open_sandbox(cfg, Path.cwd(), None, gpu)
     try:
@@ -630,7 +647,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     r = sub.add_parser("run", help="sync this directory, run a command on a cloud GPU, sync results back")
-    r.add_argument("--gpu", choices=GPUS, help="GPU type (default T4, or mgpu.toml)")
+    r.add_argument("--gpu", choices=GPUS, help="GPU type (default: your dashboard pick, else the cheapest)")
     r.add_argument("--image", help=f"preset ({', '.join(IMAGES)}) or any registry image")
     r.add_argument("--add-python", help="python version to add to a bare registry image")
     r.add_argument("--pip", action="append", help="extra pip package (repeatable)")

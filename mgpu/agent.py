@@ -208,9 +208,25 @@ class Agent:
             except OSError:
                 pass
         self.start_server()
+        from mgpu import gpus
+
+        def gpu_item(g: dict):
+            name, cheap = g["name"], g["cheapest"]
+            label = f"{name}   {g['vram_gb']} GB   ${g['rate_hr']:.2f}/hr" + ("   (cheapest)" if cheap else "")
+            picked = lambda _: (gpus.get_next() or None) in ((None, name) if cheap else (name,))  # noqa: E731
+            return Item(label, lambda *_: (gpus.set_next(None if cheap else name), self.icon.update_menu()),
+                        checked=picked, radio=True)
+
+        def gpu_menu():
+            rates = self.ui.M.rates if self.ui.M and self.ui.M.rates else None
+            yield Item("Next job only, then back to cheapest", None, enabled=False)
+            yield from (gpu_item(g) for g in gpus.catalog(rates))
+
         menu = Menu(
             Item("Open dashboard", self.open_dashboard, default=True),
             Item(lambda _: self.status, None, enabled=False),
+            Menu.SEPARATOR,
+            Item(lambda _: f"GPU for next job: {gpus.get_next() or 'cheapest'}", Menu(gpu_menu)),
             Menu.SEPARATOR,
             Item("Start with Windows", self.toggle_autostart,
                  checked=lambda _: autostart_enabled()),

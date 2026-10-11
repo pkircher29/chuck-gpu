@@ -4,119 +4,163 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>mgpu Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='10' width='56' height='44' rx='9' fill='%232f6fde'/%3E%3Crect x='18' y='21' width='28' height='22' rx='4' fill='white'/%3E%3C/svg%3E">
 <style>
 :root {
-  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --line: #e2e5ea;
-  --text: #15181d; --muted: #5d6573; --faint: #8a92a0;
-  --accent: #2f6fde; --good: #1f8a4c; --warn: #b7791f; --bad: #c53b3b;
-  --bar: #2f6fde; --bar-bg: #e4e8ef; --log-bg: #0f1216; --log-text: #c9d1dc;
-  --shadow: 0 1px 2px rgba(16,24,40,.05);
+  --bg: #f4f6f9; --panel: #ffffff; --panel-2: #f1f3f7; --line: #e3e7ee; --line-2: #d5dbe5;
+  --text: #121620; --muted: #5a6474; --faint: #8b94a3;
+  --accent: #2f6fde; --accent-soft: #e8f0fd; --good: #1a8a4a; --good-soft: #e5f5ec;
+  --warn: #b26b00; --warn-soft: #fdf3e2; --bad: #c63737; --bad-soft: #fceaea;
+  --bar-bg: #e4e8ef; --log-bg: #0e1116; --log-text: #c9d1dc;
+  --seg-gpu: #2f6fde; --seg-cpu: #8b5cf6; --seg-mem: #14b8a6;
+  --shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
+  --radius: 12px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0d0f12; --panel: #15181d; --panel-2: #1b1f26; --line: #262b33;
-    --text: #e8ebf0; --muted: #9aa3b2; --faint: #6b7483;
-    --accent: #6ea0ff; --good: #4cc483; --warn: #e3a948; --bad: #f06b6b;
-    --bar: #6ea0ff; --bar-bg: #262b33; --log-bg: #0a0c0f; --log-text: #c9d1dc;
+    --bg: #0b0d11; --panel: #14171d; --panel-2: #1a1e25; --line: #242932; --line-2: #2f3541;
+    --text: #e9ecf1; --muted: #9aa3b2; --faint: #6b7483;
+    --accent: #6ea0ff; --accent-soft: #18233a; --good: #4cc483; --good-soft: #13261c;
+    --warn: #e3a948; --warn-soft: #2a2114; --bad: #f06b6b; --bad-soft: #2c1617;
+    --bar-bg: #262b33; --log-bg: #090b0e; --log-text: #c9d1dc;
+    --seg-gpu: #6ea0ff; --seg-cpu: #a78bfa; --seg-mem: #2dd4bf;
     --shadow: none;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0d0f12; --panel: #15181d; --panel-2: #1b1f26; --line: #262b33;
-  --text: #e8ebf0; --muted: #9aa3b2; --faint: #6b7483;
-  --accent: #6ea0ff; --good: #4cc483; --warn: #e3a948; --bad: #f06b6b;
-  --bar: #6ea0ff; --bar-bg: #262b33; --log-bg: #0a0c0f; --log-text: #c9d1dc;
+  --bg: #0b0d11; --panel: #14171d; --panel-2: #1a1e25; --line: #242932; --line-2: #2f3541;
+  --text: #e9ecf1; --muted: #9aa3b2; --faint: #6b7483;
+  --accent: #6ea0ff; --accent-soft: #18233a; --good: #4cc483; --good-soft: #13261c;
+  --warn: #e3a948; --warn-soft: #2a2114; --bad: #f06b6b; --bad-soft: #2c1617;
+  --bar-bg: #262b33; --log-bg: #090b0e; --log-text: #c9d1dc;
+  --seg-gpu: #6ea0ff; --seg-cpu: #a78bfa; --seg-mem: #2dd4bf;
   --shadow: none;
 }
 * { box-sizing: border-box; }
-body {
-  margin: 0; background: var(--bg); color: var(--text);
-  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-.num, .mono { font-variant-numeric: tabular-nums; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+.num { font-variant-numeric: tabular-nums; }
 .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
-.wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-h1 { font-size: 18px; margin: 0; letter-spacing: -.01em; }
-h1 span { color: var(--faint); font-weight: 500; }
-.status { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 6px; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
-.dot.on { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
-.dot.err { background: var(--bad); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 18px 16px 56px; }
+[hidden] { display: none !important; }
 
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
-@media (max-width: 760px) { .stats { grid-template-columns: 1fr; } }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; box-shadow: var(--shadow); min-width: 0; }
-.label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
-.big { font-size: 32px; font-weight: 650; letter-spacing: -.02em; margin: 6px 0 4px; }
+/* header */
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand svg { width: 30px; height: 30px; flex: none; }
+.brand h1 { font-size: 18px; margin: 0; letter-spacing: -.01em; }
+.brand small { display: block; color: var(--faint); font-size: 12px; font-weight: 500; margin-top: -1px; }
+.acct { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; font-size: 13px; }
+.status { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
+.dot.on { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 22%, transparent); }
+.dot.err { background: var(--bad); }
+.who { display: flex; align-items: center; gap: 8px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 6px 4px 12px; box-shadow: var(--shadow); }
+.who b { color: var(--text); }
+
+/* generic */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); min-width: 0; }
+.label { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; font-weight: 650; }
+.big { font-size: 30px; font-weight: 680; letter-spacing: -.02em; margin: 6px 0 2px; }
 .sub { color: var(--muted); font-size: 12.5px; }
+.err { color: var(--bad); }
+.section { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 26px 0 10px; flex-wrap: wrap; }
+.section h2 { font-size: 13px; color: var(--muted); font-weight: 650; margin: 0; text-transform: uppercase; letter-spacing: .07em; }
+.section .sub { font-size: 12px; }
+button, select, input { font: inherit; }
+button { font-weight: 600; font-size: 13px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text); cursor: pointer; }
+button:hover { border-color: var(--faint); }
+button:disabled { opacity: .5; cursor: default; }
+button.link { background: none; border: none; padding: 4px 6px; color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.stop { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); background: var(--panel); }
+button.stop:hover { background: var(--bad-soft); }
+select, input { font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--panel); color: var(--text); }
+select:focus, input:focus, button:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 1px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 650; padding: 3px 10px; border-radius: 999px; background: var(--panel-2); color: var(--muted); white-space: nowrap; }
+.pill.running { color: var(--good); background: var(--good-soft); }
+.pill.running::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--good); animation: pulse 1.4s infinite; }
+.pill.uploading, .pill.starting, .pill.downloading { color: var(--accent); background: var(--accent-soft); }
+.pill.failed, .pill.lost { color: var(--bad); background: var(--bad-soft); }
+.pill.stopped { color: var(--warn); background: var(--warn-soft); }
+.pill.done { color: var(--good); background: var(--good-soft); }
+.tag { display: inline-block; font-size: 11px; font-weight: 650; padding: 1px 7px; border-radius: 6px; background: var(--good-soft); color: var(--good); vertical-align: 1px; }
+.tag.pick { background: var(--accent-soft); color: var(--accent); }
+@keyframes pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .pill.running::before { animation: none; } }
+
+/* GPU picker */
+.picker { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; align-items: center; padding: 18px; }
+.picker.picked { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
+@media (max-width: 760px) { .picker { grid-template-columns: 1fr; } }
+.picker select { width: 100%; font-size: 15px; font-weight: 600; padding: 10px 12px; margin-top: 8px; }
+.picker .hint { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+.specs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.spec { background: var(--panel-2); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.spec .k { color: var(--muted); font-size: 11.5px; }
+.spec .v { font-size: 17px; font-weight: 680; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spec .n { color: var(--faint); font-size: 11.5px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* stats */
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+@media (max-width: 760px) { .stats { grid-template-columns: 1fr; } }
 .meter { height: 6px; background: var(--bar-bg); border-radius: 3px; overflow: hidden; margin: 10px 0 6px; }
 .meter > i { display: block; height: 100%; background: var(--good); transition: width .4s; }
 .meter.low > i { background: var(--warn); }
 .meter.out > i { background: var(--bad); }
 
-.section-title { font-size: 13px; color: var(--muted); font-weight: 600; margin: 22px 0 8px; text-transform: uppercase; letter-spacing: .06em; }
+/* jobs */
 .job { padding: 18px; }
 .job + .job { margin-top: 12px; }
 .job-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
-.cmd { font-size: 15px; font-weight: 600; word-break: break-all; }
-.where { color: var(--muted); font-size: 12.5px; margin-top: 3px; word-break: break-all; }
-.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--panel-2); color: var(--muted); white-space: nowrap; }
-.pill.running { color: var(--good); }
-.pill.running::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--good); animation: pulse 1.4s infinite; }
-.pill.uploading, .pill.starting, .pill.downloading { color: var(--accent); }
-.pill.failed, .pill.lost { color: var(--bad); }
-.pill.stopped { color: var(--warn); }
-.pill.done { color: var(--good); }
-@keyframes pulse { 50% { opacity: .35; } }
-@media (prefers-reduced-motion: reduce) { .pill.running::before { animation: none; } }
-
-.job-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0 12px; }
-@media (max-width: 760px) { .job-grid { grid-template-columns: repeat(2, 1fr); } }
+.cmd { font-size: 15px; font-weight: 650; word-break: break-all; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { font-size: 12px; color: var(--muted); background: var(--panel-2); border-radius: 6px; padding: 2px 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip b { color: var(--text); font-weight: 600; }
+.actions { display: flex; gap: 8px; align-items: center; }
+.steps { display: flex; gap: 6px; margin: 16px 0 4px; }
+.steps span { flex: 1; font-size: 11.5px; color: var(--faint); border-top: 3px solid var(--bar-bg); padding-top: 5px; }
+.steps span.done { color: var(--muted); border-color: color-mix(in srgb, var(--good) 60%, var(--bar-bg)); }
+.steps span.now { color: var(--text); font-weight: 650; border-color: var(--accent); }
+.job-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 14px 0 12px; }
+@media (max-width: 760px) { .job-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .kv .k { color: var(--muted); font-size: 12px; }
-.kv .v { font-size: 20px; font-weight: 650; margin-top: 2px; }
-.kv .v.small { font-size: 15px; }
+.kv .v { font-size: 21px; font-weight: 680; margin-top: 2px; }
+.kv .v.small { font-size: 16px; }
 .kv .n { color: var(--faint); font-size: 11.5px; margin-top: 2px; }
-.progress { margin: 6px 0 4px; }
 .progress .row { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin-bottom: 5px; gap: 8px; }
 .progress .row span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bar { height: 8px; background: var(--bar-bg); border-radius: 4px; overflow: hidden; }
-.bar > i { display: block; height: 100%; background: var(--bar); transition: width .5s; }
+.bar > i { display: block; height: 100%; background: var(--accent); transition: width .5s; }
 .bar.indet > i { width: 30% !important; animation: indet 1.6s ease-in-out infinite; }
 @keyframes indet { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
-pre.log { background: var(--log-bg); color: var(--log-text); border-radius: 8px; padding: 12px; margin: 14px 0 0; max-height: 260px; overflow: auto; font: 12px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-all; }
-.actions { display: flex; gap: 8px; align-items: center; }
-button { font: inherit; font-weight: 600; font-size: 13px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; }
-button.stop { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }
-button.stop:hover { background: color-mix(in srgb, var(--bad) 12%, var(--panel)); }
-button:disabled { opacity: .5; cursor: default; }
-.idle { text-align: center; padding: 28px 16px; color: var(--muted); }
-.idle b { color: var(--text); }
+.split { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--bar-bg); margin: 12px 0 6px; }
+.split i { display: block; height: 100%; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; background: var(--c); }
+pre.log { background: var(--log-bg); color: var(--log-text); border-radius: 10px; padding: 12px 14px; margin: 14px 0 0; max-height: 280px; overflow: auto; font: 12px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-all; }
+.idle { display: flex; align-items: center; gap: 14px; padding: 20px; color: var(--muted); }
+.idle svg { width: 36px; height: 36px; flex: none; opacity: .55; }
+.idle b { color: var(--text); display: block; }
 
+/* tables */
 .tablewrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { text-align: left; color: var(--muted); font-weight: 650; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 tr:last-child td { border-bottom: none; }
 td.r, th.r { text-align: right; }
-td .cmdcell { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
-.rates { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 12px; margin-top: 8px; }
-.rates b { color: var(--text); font-weight: 600; }
-.note { color: var(--faint); font-size: 12px; margin-top: 10px; }
-.err { color: var(--bad); }
+td .cmdcell { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+tbody.gpus tr { cursor: pointer; }
+tbody.gpus tr:hover td { background: var(--panel-2); }
+tbody.gpus tr.sel td { background: var(--accent-soft); }
+tbody.gpus tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 
-.acct { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
-.acct .who { font-size: 13px; color: var(--muted); }
-.acct .who b { color: var(--text); }
-.acct select, .field input, .setting input { font: inherit; font-size: 13px; padding: 6px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); }
-button.link { background: none; border: none; padding: 4px 2px; color: var(--accent); font-weight: 600; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-button.primary:hover { filter: brightness(1.08); }
-.login { max-width: 520px; margin: 24px auto; padding: 24px; }
+/* login */
+.login { max-width: 520px; margin: 28px auto; padding: 24px; }
 .login h2 { font-size: 18px; margin: 0 0 6px; }
 .login p { color: var(--muted); margin: 0 0 16px; }
-.login a { color: var(--accent); }
 .or { display: flex; align-items: center; gap: 10px; color: var(--faint); font-size: 12px; margin: 20px 0 14px; text-transform: uppercase; letter-spacing: .06em; }
 .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .field { display: grid; gap: 4px; margin-bottom: 10px; }
@@ -124,15 +168,22 @@ button.primary:hover { filter: brightness(1.08); }
 .field input { width: 100%; padding: 8px 10px; }
 .wait { background: var(--panel-2); border-radius: 8px; padding: 12px; margin-top: 12px; font-size: 13px; color: var(--muted); }
 .formerr { color: var(--bad); font-size: 13px; margin-top: 10px; white-space: pre-wrap; }
-.setting { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; color: var(--muted); font-size: 12.5px; }
-.setting input { width: 90px; }
-[hidden] { display: none !important; }
+
+/* footer */
+.foot { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 12px; }
+@media (max-width: 760px) { .foot { grid-template-columns: 1fr; } }
+.setting { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.setting input { width: 96px; }
+.note { color: var(--faint); font-size: 12px; margin-top: 8px; line-height: 1.5; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>mgpu <span>· Modal GPU</span></h1>
+    <div class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="10" width="56" height="44" rx="9" fill="#2f6fde"/><rect x="18" y="21" width="28" height="22" rx="4" fill="#fff"/><g fill="#2f6fde"><rect x="15" y="4" width="4" height="6"/><rect x="26" y="4" width="4" height="6"/><rect x="37" y="4" width="4" height="6"/><rect x="48" y="4" width="4" height="6"/><rect x="15" y="54" width="4" height="6"/><rect x="26" y="54" width="4" height="6"/><rect x="37" y="54" width="4" height="6"/><rect x="48" y="54" width="4" height="6"/></g></svg>
+      <div><h1>mgpu</h1><small>your Modal account as a cloud GPU</small></div>
+    </div>
     <div class="acct">
       <div class="status"><i class="dot" id="dot"></i><span id="status">connecting…</span></div>
       <div class="who" id="who" hidden></div>
@@ -157,52 +208,82 @@ button.primary:hover { filter: brightness(1.08); }
   </div>
 
   <div id="main" hidden>
-  <div class="stats">
-    <div class="card">
-      <div class="label">Remaining credit</div>
-      <div class="big num" id="credit">—</div>
-      <div class="meter" id="creditMeter"><i style="width:0"></i></div>
-      <div class="sub" id="creditSub">&nbsp;</div>
+    <div class="card picker" id="picker">
+      <div>
+        <div class="label">GPU for the next job</div>
+        <select id="gpuSelect" aria-label="GPU for the next job"></select>
+        <div class="hint" id="pickHint"></div>
+      </div>
+      <div class="specs">
+        <div class="spec"><div class="k">Price</div><div class="v num" id="specRate">—</div><div class="n num" id="specMin">—</div></div>
+        <div class="spec"><div class="k">GPU memory</div><div class="v num" id="specVram">—</div><div class="n" id="specArch">—</div></div>
+        <div class="spec"><div class="k">Good for</div><div class="v" id="specUse" style="font-size:13.5px;white-space:normal;line-height:1.3">—</div></div>
+      </div>
     </div>
-    <div class="card">
-      <div class="label">Spending now</div>
-      <div class="big num" id="rate">—</div>
-      <div class="sub" id="rateSub">&nbsp;</div>
-    </div>
-    <div class="card">
-      <div class="label">This month</div>
-      <div class="big num" id="month">—</div>
-      <div class="sub" id="monthSub">&nbsp;</div>
-    </div>
-  </div>
 
-  <div class="section-title">Working on</div>
-  <div id="live"></div>
-
-  <div class="section-title">Recent jobs</div>
-  <div class="card" style="padding:4px 6px">
-    <div class="tablewrap">
-      <table>
-        <thead><tr><th>When</th><th>Command</th><th>Folder</th><th>GPU</th><th class="r">Run time</th><th class="r">Cost</th><th>Result</th></tr></thead>
-        <tbody id="history"><tr><td colspan="7" class="sub">No jobs yet.</td></tr></tbody>
-      </table>
+    <div class="stats">
+      <div class="card">
+        <div class="label">Remaining credit</div>
+        <div class="big num" id="credit">—</div>
+        <div class="meter" id="creditMeter"><i style="width:0"></i></div>
+        <div class="sub" id="creditSub">&nbsp;</div>
+      </div>
+      <div class="card">
+        <div class="label">Spending now</div>
+        <div class="big num" id="rate">—</div>
+        <div class="sub" id="rateSub">&nbsp;</div>
+      </div>
+      <div class="card">
+        <div class="label">This month</div>
+        <div class="big num" id="month">—</div>
+        <div class="sub" id="monthSub">&nbsp;</div>
+      </div>
     </div>
-  </div>
 
-  <div class="section-title">GPU prices (your workspace, per hour)</div>
-  <div class="rates" id="rates"></div>
-  <div class="setting">
-    <label for="creditInput">Your plan's monthly credit: $</label>
-    <input id="creditInput" type="number" min="0" step="1" inputmode="decimal">
-    <button id="creditSave">Save</button><span id="creditMsg"></span>
-  </div>
-  <div class="note" id="note"></div>
+    <div class="section"><h2>Working on</h2><span class="sub" id="liveCount"></span></div>
+    <div id="live"></div>
+
+    <div class="section"><h2>Recent jobs</h2><span class="sub" id="histSum"></span></div>
+    <div class="card" style="padding:2px 4px">
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>When</th><th>Command</th><th>Folder</th><th>GPU</th><th class="r">Run time</th><th class="r">Cost</th><th>Result</th></tr></thead>
+          <tbody id="history"><tr><td colspan="7" class="sub">No jobs yet.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section"><h2>GPUs and prices</h2><span class="sub">your workspace's live rates · click a row to use it for the next job</span></div>
+    <div class="card" style="padding:2px 4px">
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>GPU</th><th class="r">Memory</th><th>Architecture</th><th>Good for</th><th class="r">Per hour</th><th class="r">Per minute</th></tr></thead>
+          <tbody id="gpuTable" class="gpus"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="foot">
+      <div class="card">
+        <div class="label">Plan credit</div>
+        <div class="setting">
+          <label for="creditInput" class="sub">Your plan's monthly credit: $</label>
+          <input id="creditInput" type="number" min="0" step="1" inputmode="decimal">
+          <button id="creditSave">Save</button><span id="creditMsg" class="sub"></span>
+        </div>
+        <div class="note">Modal doesn't publish your plan's allowance (Starter is $30/month), so remaining credit = this amount − the credit Modal has applied this month. Saved in <span class="mono" id="settingsPath"></span>.</div>
+      </div>
+      <div class="card">
+        <div class="label">How costs are counted</div>
+        <div class="note" id="costNote" style="margin-top:8px"></div>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
 const $ = (id) => document.getElementById(id);
-let state = null, fetchedAt = 0;
+let state = null, fetchedAt = 0, addingAccount = false, lastAcct = null;
 
 const money = (v, d) => v == null ? "—" : "$" + Number(v).toFixed(d ?? (Math.abs(v) < 10 ? 4 : 2));
 const money2 = (v) => v == null ? "—" : "$" + Number(v).toFixed(2);
@@ -223,8 +304,17 @@ function when(t) {
 }
 const PHASE = {uploading: "Uploading files", starting: "Starting GPU", running: "Running",
   downloading: "Copying results back", done: "Done", failed: "Failed", stopped: "Stopped", lost: "Lost"};
+const STEPS = [["uploading", "Upload"], ["starting", "Start GPU"], ["running", "Run"], ["downloading", "Copy back"]];
+const sincePoll = () => (performance.now() - fetchedAt) / 1000;
+const liveJobs = () => (state?.jobs || []).filter(j => j.estimate !== undefined);
 
-let addingAccount = false;
+async function post(url, body) {
+  const r = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body || {})});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) throw new Error(j.error || `HTTP ${r.status}`);
+  return j;
+}
+function alertLine(msg) { $("status").textContent = msg; $("dot").className = "dot err"; }
 
 async function poll() {
   try {
@@ -239,7 +329,7 @@ async function poll() {
     }
     state = s; fetchedAt = performance.now();
     $("dot").className = "dot on";
-    $("status").textContent = "live · updated " + new Date().toLocaleTimeString();
+    $("status").textContent = "live · " + new Date().toLocaleTimeString([], {hour: "numeric", minute: "2-digit", second: "2-digit"});
     render();
   } catch (e) {
     $("dot").className = "dot err";
@@ -247,11 +337,10 @@ async function poll() {
   }
 }
 
-let lastAcct = null;
+// ── account ────────────────────────────────────────────────────────────────
 function renderAccount(s) {
   const a = s.account, L = s.login || {};
   const acctKey = a.logged_in ? a.profile + "|" + a.username : "";
-  // a login finished (browser flow or token) while adding an account: back to the dashboard
   if (addingAccount && a.logged_in && lastAcct !== null && acctKey !== lastAcct) addingAccount = false;
   lastAcct = acctKey;
   const showLogin = !a.logged_in || addingAccount;
@@ -277,22 +366,14 @@ function renderAccount(s) {
   const name = a.workspace || a.username || a.profile || "Modal";
   const others = (a.profiles || []).filter(p => p !== a.profile);
   const key = JSON.stringify([name, a.profiles, a.via_env, a.error]);
-  if (who.dataset.key === key) return;  // don't rebuild while the menu is in use
+  if (who.dataset.key === key) return;
   who.dataset.key = key;
-  who.innerHTML = `Modal: <b>${esc(name)}</b>` +
-    (a.error ? ` <span class="err" title="${esc(a.error)}">(token problem)</span>` : "") +
-    (others.length ? ` <select id="profileSel" aria-label="Switch Modal account"><option value="">Switch…</option>${others.map(p => `<option>${esc(p)}</option>`).join("")}</select>` : "") +
-    ` <button class="link" id="addAcct">Add account</button>` +
-    (a.via_env ? "" : ` <button class="link" id="logout">Log out</button>`);
+  who.innerHTML = `<span>Modal: <b>${esc(name)}</b></span>` +
+    (a.error ? `<span class="err" title="${esc(a.error)}">token problem</span>` : "") +
+    (others.length ? `<select id="profileSel" aria-label="Switch Modal account"><option value="">Switch…</option>${others.map(p => `<option>${esc(p)}</option>`).join("")}</select>` : "") +
+    `<button class="link" id="addAcct">Add account</button>` +
+    (a.via_env ? "" : `<button class="link" id="logout">Log out</button>`);
 }
-
-async function post(url, body) {
-  const r = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body || {})});
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok || j.error) throw new Error(j.error || `HTTP ${r.status}`);
-  return j;
-}
-function alertLine(msg) { $("status").textContent = msg; $("dot").className = "dot err"; }
 
 $("browserLogin").onclick = async () => {
   $("loginErr").textContent = "";
@@ -311,43 +392,48 @@ $("tokenLogin").onclick = async () => {
   poll();
 };
 $("loginBack").onclick = () => { addingAccount = false; $("loginErr").textContent = ""; poll(); };
-document.addEventListener("click", async (ev) => {
-  const t = ev.target;
-  if (t.id === "loginCancel") { await post("/api/account/login-cancel").catch(() => {}); poll(); }
-  if (t.id === "addAcct") { addingAccount = true; $("loginErr").textContent = ""; poll(); }
-  if (t.id === "logout") {
-    t.disabled = true;
-    try { await post("/api/account/logout"); state = null; } catch (e) { alertLine(e.message); }
-    $("who").dataset.key = ""; poll();
+
+// ── GPU picker ─────────────────────────────────────────────────────────────
+let gpuKey = "";
+function renderPicker(s) {
+  const list = s.gpus || [];
+  const cheap = list.find(g => g.cheapest) || list[0];
+  const sel = $("gpuSelect");
+  const key = JSON.stringify(list.map(g => [g.name, g.rate_hr]));
+  if (key !== gpuKey && document.activeElement !== sel) {
+    gpuKey = key;
+    sel.innerHTML = `<option value="">Cheapest: ${esc(cheap?.name)} · ${cheap?.vram_gb} GB · ${money2(cheap?.rate_hr)}/hr</option>` +
+      list.filter(g => !g.cheapest).map(g => `<option value="${esc(g.name)}">${esc(g.name)} · ${g.vram_gb} GB · ${money2(g.rate_hr)}/hr</option>`).join("");
   }
-});
-document.addEventListener("change", async (ev) => {
-  if (ev.target.id !== "profileSel" || !ev.target.value) return;
-  try { await post("/api/account/switch", {profile: ev.target.value}); state = null; } catch (e) { alertLine(e.message); }
-  $("who").dataset.key = ""; poll();
-});
-
-$("creditSave").onclick = async () => {
-  try {
-    await post("/api/settings", {monthly_credit: $("creditInput").value});
-    $("creditMsg").textContent = "saved"; delete $("creditInput").dataset.dirty;
-  } catch (e) { $("creditMsg").textContent = e.message; }
-  setTimeout(() => $("creditMsg").textContent = "", 2500);
+  const picked = !!s.next_gpu && s.next_gpu !== s.default_gpu;
+  if (document.activeElement !== sel) sel.value = picked ? s.next_gpu : "";
+  const g = list.find(x => x.name === (picked ? s.next_gpu : s.default_gpu)) || cheap;
+  $("picker").classList.toggle("picked", picked);
+  if (g) {
+    $("specRate").textContent = money2(g.rate_hr) + "/hr";
+    $("specMin").textContent = `${money(g.rate_hr / 60, 3)}/min · GPU only`;
+    $("specVram").textContent = g.vram_gb + " GB";
+    $("specArch").textContent = g.arch;
+    $("specUse").textContent = g.use;
+  }
+  const extra = cheap && g ? g.rate_hr - cheap.rate_hr : 0;
+  $("pickHint").innerHTML = picked
+    ? `<span class="tag pick">picked</span> Used by your <b>next</b> <span class="mono">mgpu run</span> only, then it goes back to the cheapest. ` +
+      `${money2(extra)}/hr more than ${esc(cheap.name)}. <button class="link" id="pickReset">Use cheapest</button>`
+    : `Every job runs on the cheapest GPU unless you pick another here (for one job), pass <span class="mono">--gpu</span>, or set <span class="mono">gpu</span> in a project's <span class="mono">mgpu.toml</span>.`;
+}
+async function pickGpu(name) {
+  try { await post("/api/next-gpu", {gpu: name || ""}); } catch (e) { alertLine(e.message); }
   poll();
-};
-$("creditInput").oninput = () => $("creditInput").dataset.dirty = "1";
+}
+$("gpuSelect").onchange = (e) => { e.target.blur(); pickGpu(e.target.value); };
 
-// seconds since the last poll, for smooth ticking between polls
-const sincePoll = () => (performance.now() - fetchedAt) / 1000;
-
-function liveJobs() { return (state?.jobs || []).filter(j => j.estimate !== undefined); }
-
+// ── render ─────────────────────────────────────────────────────────────────
 function render() {
-  const s = state;
-  const lives = liveJobs();
+  const s = state, lives = liveJobs();
   const liveCost = lives.reduce((a, j) => a + (j.cost || 0), 0);
+  renderPicker(s);
 
-  // credit
   const c = s.credit;
   if (c) {
     const remaining = Math.max(0, c.remaining - liveCost);
@@ -356,39 +442,40 @@ function render() {
     const m = $("creditMeter");
     m.firstElementChild.style.width = pct + "%";
     m.className = "meter" + (pct <= 0 ? " out" : pct < 20 ? " low" : "");
-    $("creditSub").innerHTML = `${money2(c.used)} of ${money2(c.allowance)} monthly credit used` +
-      (c.billed > 0 ? ` · <span class="err">${money2(c.billed)} billed to card</span>` : "") +
-      ` · resets ${new Date(c.period_end).toLocaleDateString([], {month: "short", day: "numeric"})}`;
+    const cheap = (s.gpus || []).find(g => g.cheapest);
+    const hrs = cheap && cheap.rate_hr ? remaining / cheap.rate_hr : null;
+    $("creditSub").innerHTML = `${money2(c.used)} of ${money2(c.allowance)} used · resets ${new Date(c.period_end).toLocaleDateString([], {month: "short", day: "numeric"})}` +
+      (hrs != null ? `<br>≈ ${hrs >= 10 ? Math.round(hrs) : hrs.toFixed(1)} hours of ${esc(cheap.name)} left` : "") +
+      (c.billed > 0 ? ` · <span class="err">${money2(c.billed)} billed to card</span>` : "");
   } else {
     $("credit").textContent = "—";
     $("creditSub").innerHTML = s.summary_error ? `<span class="err">${esc(s.summary_error)}</span>` : "loading billing…";
   }
 
-  // rate
-  $("rate").textContent = s.live_rate_hr > 0 ? money2(s.live_rate_hr) + "/hr" : "$0.00/hr";
+  $("rate").textContent = money2(s.live_rate_hr || 0) + "/hr";
   $("rateSub").textContent = s.live_rate_hr > 0
-    ? `${lives.length} job${lives.length > 1 ? "s" : ""} on GPU · ${money(s.live_rate_hr / 60, 3)} per minute`
-    : "Nothing running — no GPU charges";
+    ? `${lives.length} job${lives.length > 1 ? "s" : ""} on a GPU · ${money(s.live_rate_hr / 60, 3)} per minute`
+    : "Nothing running, no GPU charges";
 
-  // month
   const sm = s.summary;
   $("month").textContent = sm ? money2(sm.metered + liveCost) : "—";
-  $("monthSub").textContent = (sm ? `all Modal usage · ` : "") + `mgpu: ${money2(s.mgpu_today)} today, ${money2(s.mgpu_month)} this month`;
+  $("monthSub").innerHTML = (sm ? `all Modal usage this month<br>` : "") + `mgpu: ${money2(s.mgpu_today)} today · ${money2(s.mgpu_month)} this month`;
 
-  // live jobs
   const live = $("live");
+  $("liveCount").textContent = lives.length ? `${lives.length} running` : "";
   if (!lives.length) {
-    live.innerHTML = `<div class="card idle"><b>No GPU job running.</b><br>Start one with <span class="mono">mgpu run -- &lt;command&gt;</span></div>`;
+    live.innerHTML = `<div class="card idle"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="10" width="56" height="44" rx="9" fill="none" stroke="currentColor" stroke-width="4"/><rect x="20" y="23" width="24" height="18" rx="3" fill="currentColor"/></svg>
+      <div><b>No GPU job running</b>Start one from any folder: <span class="mono">mgpu run -- python train.py</span></div></div>`;
   } else {
-    // keep log scroll position stable across re-renders
     const keepScroll = {};
     live.querySelectorAll("pre.log").forEach(p => keepScroll[p.dataset.id] = p.scrollHeight - p.scrollTop - p.clientHeight < 30);
     live.innerHTML = lives.map(jobCard).join("");
     live.querySelectorAll("pre.log").forEach(p => { if (keepScroll[p.dataset.id] !== false) p.scrollTop = p.scrollHeight; });
   }
 
-  // history
   const past = (s.jobs || []).filter(j => j.estimate === undefined).slice(0, 25);
+  const total = past.reduce((a, j) => a + (j.cost || 0), 0);
+  $("histSum").textContent = past.length ? `${past.length} job${past.length > 1 ? "s" : ""} · ${money2(total)}` : "";
   $("history").innerHTML = past.length ? past.map(j => {
     const run = j.running_since && j.ended ? j.ended - j.running_since : null;
     const res = j.phase === "done" ? "done" : j.phase === "failed" && j.exit_code != null ? `exit ${j.exit_code}` : PHASE[j.phase] || j.phase;
@@ -403,17 +490,22 @@ function render() {
     </tr>`;
   }).join("") : `<tr><td colspan="7" class="sub">No finished jobs yet.</td></tr>`;
 
+  const sel = s.next_gpu || s.default_gpu;
+  $("gpuTable").innerHTML = (s.gpus || []).map(g => `<tr data-gpu="${esc(g.name)}" class="${g.name === sel ? "sel" : ""}" title="Use ${esc(g.name)} for the next job">
+      <td><b>${esc(g.name)}</b> ${g.cheapest ? `<span class="tag">cheapest</span>` : ""} ${g.name === s.next_gpu && !g.cheapest ? `<span class="tag pick">next job</span>` : ""}</td>
+      <td class="r num">${g.vram_gb} GB</td><td>${esc(g.arch)}</td><td class="sub">${esc(g.use)}</td>
+      <td class="r num"><b>${money2(g.rate_hr)}</b></td><td class="r num">${money(g.rate_hr / 60, 4)}</td></tr>`).join("");
+
   if (!$("creditInput").dataset.dirty && document.activeElement !== $("creditInput")) $("creditInput").value = s.monthly_credit;
-  $("rates").innerHTML = Object.entries(s.rates || {}).map(([g, r]) => `<span>${g} <b class="num">${money2(r)}</b></span>`).join("");
-  $("note").innerHTML = `Job costs are Modal's metered GPU + CPU + memory for each sandbox at your workspace rates. ` +
-    `Remaining credit = your plan's monthly credit (set above; Modal doesn't publish it) − the credit Modal has applied this month. ` +
-    `Saved in <span class="mono">${esc(s.settings_path)}</span>.`;
+  $("settingsPath").textContent = s.settings_path || "";
+  $("costNote").innerHTML = `Modal bills each job for its GPU <b>plus</b> the CPU cores and memory it reserves: ` +
+    `${money(s.cpu_rate_hr, 4)} per core-hour and ${money(s.mem_rate_hr, 4)} per GiB-hour at your rates. ` +
+    `Job costs are Modal's metered usage for each sandbox, never shown below the reserved minimum (Modal's per-job figure can lag on long jobs). "This month" covers every Modal app on your account, not just mgpu.`;
 }
 
 function jobCard(j) {
-  const e = j.estimate || {};
-  const p = j.progress;
-  let progress = "";
+  const e = j.estimate || {}, p = j.progress;
+  let progress;
   if (j.phase === "uploading" && j.upload) {
     const pct = j.upload.bytes ? 100 * j.upload.sent / j.upload.bytes : 0;
     progress = progressRow(`Uploading ${j.upload.files} file(s)`, `${(j.upload.sent/1048576).toFixed(1)} / ${(j.upload.bytes/1048576).toFixed(1)} MB`, pct);
@@ -422,27 +514,41 @@ function jobCard(j) {
   } else {
     progress = progressRow(PHASE[j.phase] || j.phase, "", null);
   }
+  const idx = STEPS.findIndex(([k]) => k === j.phase);
+  const steps = STEPS.map(([k, label], i) => `<span class="${i < idx ? "done" : i === idx ? "now" : ""}">${label}</span>`).join("");
   const running = j.running_since ? (state.now - j.running_since) + sincePoll() : null;
   const gpuTime = j.started ? (state.now - j.started) + sincePoll() : null;
+  const b = j.breakdown;
+  const bt = b ? (b.gpu + b.cpu + b.mem) || 1 : 0;
+  const split = b ? `<div class="split" title="what the cost so far is made of"><i style="width:${100*b.gpu/bt}%;background:var(--seg-gpu)"></i><i style="width:${100*b.cpu/bt}%;background:var(--seg-cpu)"></i><i style="width:${100*b.mem/bt}%;background:var(--seg-mem)"></i></div>
+    <div class="legend num"><span style="--c:var(--seg-gpu)">GPU ${money(b.gpu)}</span><span style="--c:var(--seg-cpu)">CPU ${money(b.cpu)}</span><span style="--c:var(--seg-mem)">Memory ${money(b.mem)}</span></div>` : "";
+  const res = [j.cpu ? `${j.cpu} CPU` : null, j.memory ? `${Math.round(j.memory / 1024)} GB RAM` : null].filter(Boolean).join(" · ");
   return `<div class="card job">
     <div class="job-head">
       <div style="min-width:0;flex:1">
         <div class="cmd mono">${esc(cmdText(j))}</div>
-        <div class="where">${esc(j.dir)} · ${esc(j.gpu)} · ${esc(j.image)}</div>
+        <div class="chips">
+          <span class="chip" title="${esc(j.gpu_source || "")}"><b>${esc(j.gpu)}</b>${j.gpu_source ? " · " + esc(j.gpu_source.split(" (")[0]) : ""}</span>
+          ${res ? `<span class="chip">${esc(res)}</span>` : ""}
+          <span class="chip" title="${esc(j.dir)}">${esc(folder(j.dir))}</span>
+          <span class="chip mono" title="${esc(j.image)}">${esc(j.image)}</span>
+        </div>
       </div>
       <div class="actions">
         <span class="pill ${j.phase}">${PHASE[j.phase] || j.phase}</span>
         ${j.sandbox_id ? `<button class="stop" data-stop="${esc(j.id)}">Stop GPU</button>` : ""}
       </div>
     </div>
+    <div class="steps">${steps}</div>
     <div class="job-grid">
-      <div class="kv"><div class="k">Spent so far</div><div class="v num" data-tick="${j.cost ?? 0}" data-rate="${j.started ? j.rate_hr / 3600 : 0}">${money(j.cost ?? 0)}</div><div class="n num">${money2(j.rate_hr)}/hr</div></div>
-      <div class="kv"><div class="k">Estimated total</div><div class="v num">${e.total != null ? money(e.total) : "?"}</div><div class="n" title="${esc(e.basis)}">${e.total != null ? "from " + esc(e.basis) : "max " + money2(e.max_total) + " if it hits the timeout"}</div></div>
+      <div class="kv"><div class="k">Spent so far</div><div class="v num" data-tick="${j.cost ?? 0}" data-rate="${j.started ? j.rate_hr / 3600 : 0}">${money(j.cost ?? 0)}</div><div class="n num">${money2(j.rate_hr)}/hr all-in</div></div>
+      <div class="kv"><div class="k">Estimated total</div><div class="v num">${e.total != null ? money(e.total) : "?"}</div><div class="n" title="${esc(e.basis)}">${e.total != null ? "from " + esc(e.basis) : "at most " + money2(e.max_total) + " (timeout)"}</div></div>
       <div class="kv"><div class="k">Time left</div><div class="v small num">${e.remaining_s != null ? "~" + dur(e.remaining_s - sincePoll()) : "unknown"}</div><div class="n num">running ${dur(running)}</div></div>
-      <div class="kv"><div class="k">GPU on for</div><div class="v small num">${dur(gpuTime)}</div><div class="n num">timeout ${dur(j.timeout)}</div></div>
+      <div class="kv"><div class="k">GPU on for</div><div class="v small num">${dur(gpuTime)}</div><div class="n num">stops at ${dur(j.timeout)}</div></div>
     </div>
     ${progress}
-    ${j.detail ? `<div class="sub err" style="margin-top:8px">${esc(j.detail)}</div>` : ""}
+    ${split}
+    ${j.detail ? `<div class="sub" style="margin-top:8px;color:var(--warn)">${esc(j.detail)}</div>` : ""}
     <pre class="log" data-id="${esc(j.id)}">${esc(j.log || "waiting for output…")}</pre>
   </div>`;
 }
@@ -453,19 +559,47 @@ function progressRow(label, right, pct) {
     <div class="bar ${indet ? "indet" : ""}"><i style="width:${indet ? 30 : Math.max(0, Math.min(100, pct))}%"></i></div></div>`;
 }
 
+// ── events ─────────────────────────────────────────────────────────────────
 document.addEventListener("click", async (ev) => {
-  const id = ev.target?.dataset?.stop;
+  const t = ev.target;
+  const row = t.closest?.("tbody.gpus tr");
+  if (row) {
+    const cheap = (state?.gpus || []).find(x => x.cheapest);
+    return pickGpu(row.dataset.gpu === cheap?.name ? "" : row.dataset.gpu);
+  }
+  if (t.id === "pickReset") return pickGpu("");
+  if (t.id === "loginCancel") { await post("/api/account/login-cancel").catch(() => {}); return poll(); }
+  if (t.id === "addAcct") { addingAccount = true; $("loginErr").textContent = ""; return poll(); }
+  if (t.id === "logout") {
+    t.disabled = true;
+    try { await post("/api/account/logout"); state = null; } catch (e) { alertLine(e.message); }
+    $("who").dataset.key = ""; return poll();
+  }
+  const id = t.dataset?.stop;
   if (!id) return;
-  ev.target.disabled = true; ev.target.textContent = "Stopping…";
+  t.disabled = true; t.textContent = "Stopping…";
   try {
     const r = await fetch(`/api/jobs/${encodeURIComponent(id)}/stop`, {method: "POST"});
     if (!r.ok) throw new Error((await r.json()).error || r.status);
-    ev.target.textContent = "Stopped";
-  } catch (e) { ev.target.textContent = "Stop failed"; ev.target.title = e.message; ev.target.disabled = false; }
+    t.textContent = "Stopped";
+  } catch (e) { t.textContent = "Stop failed"; t.title = e.message; t.disabled = false; }
   poll();
 });
+document.addEventListener("change", async (ev) => {
+  if (ev.target.id !== "profileSel" || !ev.target.value) return;
+  try { await post("/api/account/switch", {profile: ev.target.value}); state = null; } catch (e) { alertLine(e.message); }
+  $("who").dataset.key = ""; poll();
+});
+$("creditSave").onclick = async () => {
+  try {
+    await post("/api/settings", {monthly_credit: $("creditInput").value});
+    $("creditMsg").textContent = "saved"; delete $("creditInput").dataset.dirty;
+  } catch (e) { $("creditMsg").textContent = e.message; }
+  setTimeout(() => $("creditMsg").textContent = "", 2500);
+  poll();
+};
+$("creditInput").oninput = () => $("creditInput").dataset.dirty = "1";
 
-// tick the live cost every 100ms between polls
 setInterval(() => {
   document.querySelectorAll("[data-tick]").forEach(el => {
     el.textContent = money(Number(el.dataset.tick) + Number(el.dataset.rate) * sincePoll());
