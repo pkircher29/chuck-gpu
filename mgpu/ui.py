@@ -144,6 +144,29 @@ class Modal:
         import modal
         modal.Sandbox.from_id(sandbox_id).terminate()
 
+    def list_sandboxes(self) -> list[dict]:
+        """All live sandboxes on this workspace (not just mgpu jobs)."""
+        try:
+            sbs = list(modal.Sandbox.list())
+        except Exception:
+            return []
+        out = []
+        for sb in sbs:
+            rc = sb.returncode
+            if rc is not None:
+                continue  # finished, skip
+            tags = {}
+            try:
+                tags = sb.get_tags() or {}
+            except Exception:
+                pass
+            out.append({"id": sb.object_id, "tags": tags})
+        return out
+
+    def kill_sandbox(self, sandbox_id: str) -> None:
+        import modal
+        modal.Sandbox.from_id(sandbox_id).terminate()
+
 
 async def _usage_rpc(sandbox_id: str):
     from modal.client import _Client
@@ -323,6 +346,9 @@ def build_state() -> dict:
         "default_gpu": gpus.cheapest(M.rates),
         "cpu_rate_hr": M.rates.get("cpu_hour_cost_sandbox"),
         "mem_rate_hr": M.rates.get("mem_gib_hour_cost_sandbox"),
+        "sandboxes": M.list_sandboxes(),
+        "egress_rate_hr": M.rates.get("egress_gib_cost"),
+        "volume_storage_rate": M.rates.get("volume_storage_gib_month_cost"),
     }
 
 
@@ -408,6 +434,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"error": str(e)}, 500)
             # the running `mgpu run` owns the job file; leave it a marker instead
             (JOBS_DIR / f"{job['id']}.stop").touch()
+            return self._json({"ok": True})
+        if self.path == "/api/sandbox-kill":
+            sid = self._body().get("id", "")
+            if not sid:
+                return self._json({"error": "no sandbox id"}, 400)
+            try:
+                M.kill_sandbox(sid)
+            except Exception as e:
+                return self._json({"error": str(e)}, 500)
             return self._json({"ok": True})
         self.send_error(404)
 

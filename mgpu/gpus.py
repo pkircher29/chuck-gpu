@@ -24,12 +24,16 @@ CATALOG = {
     "A100-80GB": ("gpu_hour_cost_a100_80gb", 80,  "Ampere",    "big models, long contexts"),
     "H100":      ("gpu_hour_cost_h100",      80,  "Hopper",    "fastest widely available"),
     "H200":      ("gpu_hour_cost_h200",      141, "Hopper",    "H100 with more memory"),
-    "B200":      ("gpu_hour_cost_b200",      180, "Blackwell", "largest models"),
+    "B200":      ("gpu_hour_cost_b200",      192, "Blackwell", "largest models"),
+    "B300":      ("gpu_hour_cost_b300",      288, "Blackwell", "next-gen largest models"),
+    "MI355X":    ("gpu_hour_cost_mi355x",    288, "CDNA 4",    "AMD flagship, 288 GB HBM3"),
+    "rtx6000":   ("gpu_hour_cost_rtx6000",    48, "Ada",       "pro workloads, RTX A6000 successor"),
 }
 GPUS = list(CATALOG)
 # used only until the first live lookup (Modal list prices, $/hr)
 FALLBACK_RATES = {"T4": 0.59, "L4": 0.80, "A10G": 1.10, "L40S": 1.95, "A100": 2.10,
-                  "A100-80GB": 2.50, "H100": 3.95, "H200": 4.54, "B200": 6.25}
+                  "A100-80GB": 2.50, "H100": 3.95, "H200": 4.54, "B200": 6.25,
+                  "B300": 7.10, "MI355X": 6.75, "rtx6000": 3.03}
 
 
 def save_rates(rates: dict[str, float]) -> None:
