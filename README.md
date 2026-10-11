@@ -89,7 +89,7 @@ tray menu): it applies to the **next `mgpu run` only**, then resets to the
 cheapest. `--gpu NAME` or `gpu = "NAME"` in a project's `mgpu.toml` also
 choose one. Order: `--gpu` › dashboard pick › `mgpu.toml` › cheapest.
 
-`run` options: `--gpu T4|L4|A10G|L40S|A100|A100-80GB|H100|H200|B200`,
+`run` options: `--gpu T4|L4|A10G|L40S|A100|A100-80GB|H100|H200|B200|B300|MI355X|rtx6000`,
 `--image torch|torch-devel|cuda|cuda-devel|<any registry image>`,
 `--pip PKG`, `--apt PKG`, `-e KEY=VAL`, `--secret MODAL_SECRET`,
 `--timeout SECONDS` (default 3600), `--cpu CORES`, `--memory MIB`,
@@ -149,7 +149,11 @@ Starts automatically (in the background) the first time you `mgpu run`.
 - **Working on** — phase (uploading → starting → running → copying back),
   progress bar, live cost ticking, **estimated total cost** and time left,
   log tail, and a **Stop GPU** button.
+- **Active Sandboxes** — every live sandbox on your Modal workspace, not just
+  mgpu jobs. Each row shows the sandbox ID, tags, and a **Kill** button to
+  terminate it immediately.
 - **Recent jobs** — run time, final metered cost, result.
+- **Theme toggle** — light/dark, remembered in localStorage.
 
 Cost of each job = the sandbox's metered GPU + CPU + memory time × your
 workspace's live rates. The estimate comes from, in order: a tqdm-style
