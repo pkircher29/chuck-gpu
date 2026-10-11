@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mgpu Dashboard</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --line: #e2e5ea;
+  --text: #15181d; --muted: #5d6573; --faint: #8a92a0;
+  --accent: #2f6fde; --good: #1f8a4c; --warn: #b7791f; --bad: #c53b3b;
+  --bar: #2f6fde; --bar-bg: #e4e8ef; --log-bg: #0f1216; --log-text: #c9d1dc;
+  --shadow: 0 1px 2px rgba(16,24,40,.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d0f12; --panel: #15181d; --panel-2: #1b1f26; --line: #262b33;
+    --text: #e8ebf0; --muted: #9aa3b2; --faint: #6b7483;
+    --accent: #6ea0ff; --good: #4cc483; --warn: #e3a948; --bad: #f06b6b;
+    --bar: #6ea0ff; --bar-bg: #262b33; --log-bg: #0a0c0f; --log-text: #c9d1dc;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d0f12; --panel: #15181d; --panel-2: #1b1f26; --line: #262b33;
+  --text: #e8ebf0; --muted: #9aa3b2; --faint: #6b7483;
+  --accent: #6ea0ff; --good: #4cc483; --warn: #e3a948; --bad: #f06b6b;
+  --bar: #6ea0ff; --bar-bg: #262b33; --log-bg: #0a0c0f; --log-text: #c9d1dc;
+  --shadow: none;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.num, .mono { font-variant-numeric: tabular-nums; }
+.mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+h1 { font-size: 18px; margin: 0; letter-spacing: -.01em; }
+h1 span { color: var(--faint); font-weight: 500; }
+.status { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.dot.on { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
+.dot.err { background: var(--bad); }
+
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 760px) { .stats { grid-template-columns: 1fr; } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; box-shadow: var(--shadow); min-width: 0; }
+.label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.big { font-size: 32px; font-weight: 650; letter-spacing: -.02em; margin: 6px 0 4px; }
+.sub { color: var(--muted); font-size: 12.5px; }
+.meter { height: 6px; background: var(--bar-bg); border-radius: 3px; overflow: hidden; margin: 10px 0 6px; }
+.meter > i { display: block; height: 100%; background: var(--good); transition: width .4s; }
+.meter.low > i { background: var(--warn); }
+.meter.out > i { background: var(--bad); }
+
+.section-title { font-size: 13px; color: var(--muted); font-weight: 600; margin: 22px 0 8px; text-transform: uppercase; letter-spacing: .06em; }
+.job { padding: 18px; }
+.job + .job { margin-top: 12px; }
+.job-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.cmd { font-size: 15px; font-weight: 600; word-break: break-all; }
+.where { color: var(--muted); font-size: 12.5px; margin-top: 3px; word-break: break-all; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--panel-2); color: var(--muted); white-space: nowrap; }
+.pill.running { color: var(--good); }
+.pill.running::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--good); animation: pulse 1.4s infinite; }
+.pill.uploading, .pill.starting, .pill.downloading { color: var(--accent); }
+.pill.failed, .pill.lost { color: var(--bad); }
+.pill.stopped { color: var(--warn); }
+.pill.done { color: var(--good); }
+@keyframes pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .pill.running::before { animation: none; } }
+
+.job-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0 12px; }
+@media (max-width: 760px) { .job-grid { grid-template-columns: repeat(2, 1fr); } }
+.kv .k { color: var(--muted); font-size: 12px; }
+.kv .v { font-size: 20px; font-weight: 650; margin-top: 2px; }
+.kv .v.small { font-size: 15px; }
+.kv .n { color: var(--faint); font-size: 11.5px; margin-top: 2px; }
+.progress { margin: 6px 0 4px; }
+.progress .row { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin-bottom: 5px; gap: 8px; }
+.progress .row span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar { height: 8px; background: var(--bar-bg); border-radius: 4px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--bar); transition: width .5s; }
+.bar.indet > i { width: 30% !important; animation: indet 1.6s ease-in-out infinite; }
+@keyframes indet { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
+pre.log { background: var(--log-bg); color: var(--log-text); border-radius: 8px; padding: 12px; margin: 14px 0 0; max-height: 260px; overflow: auto; font: 12px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-all; }
+.actions { display: flex; gap: 8px; align-items: center; }
+button { font: inherit; font-weight: 600; font-size: 13px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; }
+button.stop { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }
+button.stop:hover { background: color-mix(in srgb, var(--bad) 12%, var(--panel)); }
+button:disabled { opacity: .5; cursor: default; }
+.idle { text-align: center; padding: 28px 16px; color: var(--muted); }
+.idle b { color: var(--text); }
+
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.r, th.r { text-align: right; }
+td .cmdcell { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.rates { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 12px; margin-top: 8px; }
+.rates b { color: var(--text); font-weight: 600; }
+.note { color: var(--faint); font-size: 12px; margin-top: 10px; }
+.err { color: var(--bad); }
+
+.acct { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+.acct .who { font-size: 13px; color: var(--muted); }
+.acct .who b { color: var(--text); }
+.acct select, .field input, .setting input { font: inherit; font-size: 13px; padding: 6px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); }
+button.link { background: none; border: none; padding: 4px 2px; color: var(--accent); font-weight: 600; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { filter: brightness(1.08); }
+.login { max-width: 520px; margin: 24px auto; padding: 24px; }
+.login h2 { font-size: 18px; margin: 0 0 6px; }
+.login p { color: var(--muted); margin: 0 0 16px; }
+.login a { color: var(--accent); }
+.or { display: flex; align-items: center; gap: 10px; color: var(--faint); font-size: 12px; margin: 20px 0 14px; text-transform: uppercase; letter-spacing: .06em; }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.field { display: grid; gap: 4px; margin-bottom: 10px; }
+.field label { font-size: 12px; color: var(--muted); font-weight: 600; }
+.field input { width: 100%; padding: 8px 10px; }
+.wait { background: var(--panel-2); border-radius: 8px; padding: 12px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+.formerr { color: var(--bad); font-size: 13px; margin-top: 10px; white-space: pre-wrap; }
+.setting { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; color: var(--muted); font-size: 12.5px; }
+.setting input { width: 90px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>mgpu <span>· Modal GPU</span></h1>
+    <div class="acct">
+      <div class="status"><i class="dot" id="dot"></i><span id="status">connecting…</span></div>
+      <div class="who" id="who" hidden></div>
+    </div>
+  </header>
+
+  <div class="card login" id="login" hidden>
+    <h2>Connect your Modal account</h2>
+    <p>mgpu runs your jobs on <b>your own</b> Modal account, and Modal bills that account.
+       No account yet? <a href="https://modal.com/signup" target="_blank" rel="noopener">Sign up at modal.com</a>; new accounts get free monthly credit.</p>
+    <button class="primary" id="browserLogin">Log in with Modal</button>
+    <div class="wait" id="loginWait" hidden></div>
+    <div class="or">or paste a token</div>
+    <div class="field"><label for="tokenId">Token ID</label><input id="tokenId" placeholder="ak-…" autocomplete="off" spellcheck="false"></div>
+    <div class="field"><label for="tokenSecret">Token secret</label><input id="tokenSecret" type="password" placeholder="as-…" autocomplete="off"></div>
+    <div class="actions" style="justify-content:space-between;flex-wrap:wrap">
+      <a class="sub" href="https://modal.com/settings/tokens" target="_blank" rel="noopener">Create a token in Modal settings ↗</a>
+      <span class="actions"><button class="link" id="loginBack" hidden>Cancel</button><button id="tokenLogin">Connect</button></span>
+    </div>
+    <div class="formerr" id="loginErr"></div>
+    <p class="note" style="margin:16px 0 0">The token is saved in Modal's own config file (<span class="mono" id="cfgPath">~/.modal.toml</span>), the same place the <span class="mono">modal</span> CLI keeps it. mgpu doesn't store it anywhere else or send it anywhere except Modal.</p>
+  </div>
+
+  <div id="main" hidden>
+  <div class="stats">
+    <div class="card">
+      <div class="label">Remaining credit</div>
+      <div class="big num" id="credit">—</div>
+      <div class="meter" id="creditMeter"><i style="width:0"></i></div>
+      <div class="sub" id="creditSub">&nbsp;</div>
+    </div>
+    <div class="card">
+      <div class="label">Spending now</div>
+      <div class="big num" id="rate">—</div>
+      <div class="sub" id="rateSub">&nbsp;</div>
+    </div>
+    <div class="card">
+      <div class="label">This month</div>
+      <div class="big num" id="month">—</div>
+      <div class="sub" id="monthSub">&nbsp;</div>
+    </div>
+  </div>
+
+  <div class="section-title">Working on</div>
+  <div id="live"></div>
+
+  <div class="section-title">Recent jobs</div>
+  <div class="card" style="padding:4px 6px">
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>When</th><th>Command</th><th>Folder</th><th>GPU</th><th class="r">Run time</th><th class="r">Cost</th><th>Result</th></tr></thead>
+        <tbody id="history"><tr><td colspan="7" class="sub">No jobs yet.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-title">GPU prices (your workspace, per hour)</div>
+  <div class="rates" id="rates"></div>
+  <div class="setting">
+    <label for="creditInput">Your plan's monthly credit: $</label>
+    <input id="creditInput" type="number" min="0" step="1" inputmode="decimal">
+    <button id="creditSave">Save</button><span id="creditMsg"></span>
+  </div>
+  <div class="note" id="note"></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let state = null, fetchedAt = 0;
+
+const money = (v, d) => v == null ? "—" : "$" + Number(v).toFixed(d ?? (Math.abs(v) < 10 ? 4 : 2));
+const money2 = (v) => v == null ? "—" : "$" + Number(v).toFixed(2);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function dur(s) {
+  if (s == null || !isFinite(s)) return "—";
+  s = Math.max(0, Math.round(s));
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+  return h ? `${h}h ${String(m).padStart(2,"0")}m` : m ? `${m}m ${String(sec).padStart(2,"0")}s` : `${sec}s`;
+}
+const cmdText = (j) => (j.command || []).join(" ");
+const folder = (d) => (d || "").split(/[\\/]/).filter(Boolean).slice(-2).join("\\");
+function when(t) {
+  const d = new Date(t * 1000), now = new Date();
+  const same = d.toDateString() === now.toDateString();
+  return same ? d.toLocaleTimeString([], {hour: "numeric", minute: "2-digit"})
+              : d.toLocaleDateString([], {month: "short", day: "numeric"}) + " " + d.toLocaleTimeString([], {hour: "numeric", minute: "2-digit"});
+}
+const PHASE = {uploading: "Uploading files", starting: "Starting GPU", running: "Running",
+  downloading: "Copying results back", done: "Done", failed: "Failed", stopped: "Stopped", lost: "Lost"};
+
+let addingAccount = false;
+
+async function poll() {
+  try {
+    const r = await fetch("/api/state", {cache: "no-store"});
+    const s = await r.json();
+    if (s.account) renderAccount(s);
+    if (s.error) throw new Error(s.error);
+    if (!s.account?.logged_in || addingAccount) {
+      $("dot").className = "dot";
+      $("status").textContent = s.account?.logged_in ? "adding an account" : "not connected";
+      return;
+    }
+    state = s; fetchedAt = performance.now();
+    $("dot").className = "dot on";
+    $("status").textContent = "live · updated " + new Date().toLocaleTimeString();
+    render();
+  } catch (e) {
+    $("dot").className = "dot err";
+    $("status").textContent = "offline: " + e.message;
+  }
+}
+
+let lastAcct = null;
+function renderAccount(s) {
+  const a = s.account, L = s.login || {};
+  const acctKey = a.logged_in ? a.profile + "|" + a.username : "";
+  // a login finished (browser flow or token) while adding an account: back to the dashboard
+  if (addingAccount && a.logged_in && lastAcct !== null && acctKey !== lastAcct) addingAccount = false;
+  lastAcct = acctKey;
+  const showLogin = !a.logged_in || addingAccount;
+  $("login").hidden = !showLogin;
+  $("main").hidden = showLogin;
+  $("loginBack").hidden = !(a.logged_in && addingAccount);
+  $("cfgPath").textContent = a.config_path || "~/.modal.toml";
+  const lw = $("loginWait");
+  if (L.state === "waiting") {
+    lw.hidden = false;
+    lw.innerHTML = `Waiting for you to approve in the browser… ` +
+      (L.url ? `If no tab opened, <a href="${esc(L.url)}" target="_blank" rel="noopener">open the Modal login page</a>. ` : "") +
+      `<button class="link" id="loginCancel">Cancel</button>`;
+    $("browserLogin").disabled = true;
+  } else {
+    lw.hidden = true;
+    $("browserLogin").disabled = false;
+    if (L.state === "failed" && L.error && !$("loginErr").textContent) $("loginErr").textContent = L.error;
+  }
+  const who = $("who");
+  if (!a.logged_in) { who.hidden = true; who.dataset.key = ""; return; }
+  who.hidden = false;
+  const name = a.workspace || a.username || a.profile || "Modal";
+  const others = (a.profiles || []).filter(p => p !== a.profile);
+  const key = JSON.stringify([name, a.profiles, a.via_env, a.error]);
+  if (who.dataset.key === key) return;  // don't rebuild while the menu is in use
+  who.dataset.key = key;
+  who.innerHTML = `Modal: <b>${esc(name)}</b>` +
+    (a.error ? ` <span class="err" title="${esc(a.error)}">(token problem)</span>` : "") +
+    (others.length ? ` <select id="profileSel" aria-label="Switch Modal account"><option value="">Switch…</option>${others.map(p => `<option>${esc(p)}</option>`).join("")}</select>` : "") +
+    ` <button class="link" id="addAcct">Add account</button>` +
+    (a.via_env ? "" : ` <button class="link" id="logout">Log out</button>`);
+}
+
+async function post(url, body) {
+  const r = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body || {})});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) throw new Error(j.error || `HTTP ${r.status}`);
+  return j;
+}
+function alertLine(msg) { $("status").textContent = msg; $("dot").className = "dot err"; }
+
+$("browserLogin").onclick = async () => {
+  $("loginErr").textContent = "";
+  try { await post("/api/account/login-browser"); } catch (e) { $("loginErr").textContent = e.message; }
+  poll();
+};
+$("tokenLogin").onclick = async () => {
+  const btn = $("tokenLogin");
+  $("loginErr").textContent = ""; btn.disabled = true; btn.textContent = "Checking…";
+  try {
+    await post("/api/account/login-token", {token_id: $("tokenId").value, token_secret: $("tokenSecret").value});
+    $("tokenId").value = $("tokenSecret").value = "";
+    addingAccount = false;
+  } catch (e) { $("loginErr").textContent = e.message; }
+  btn.disabled = false; btn.textContent = "Connect";
+  poll();
+};
+$("loginBack").onclick = () => { addingAccount = false; $("loginErr").textContent = ""; poll(); };
+document.addEventListener("click", async (ev) => {
+  const t = ev.target;
+  if (t.id === "loginCancel") { await post("/api/account/login-cancel").catch(() => {}); poll(); }
+  if (t.id === "addAcct") { addingAccount = true; $("loginErr").textContent = ""; poll(); }
+  if (t.id === "logout") {
+    t.disabled = true;
+    try { await post("/api/account/logout"); state = null; } catch (e) { alertLine(e.message); }
+    $("who").dataset.key = ""; poll();
+  }
+});
+document.addEventListener("change", async (ev) => {
+  if (ev.target.id !== "profileSel" || !ev.target.value) return;
+  try { await post("/api/account/switch", {profile: ev.target.value}); state = null; } catch (e) { alertLine(e.message); }
+  $("who").dataset.key = ""; poll();
+});
+
+$("creditSave").onclick = async () => {
+  try {
+    await post("/api/settings", {monthly_credit: $("creditInput").value});
+    $("creditMsg").textContent = "saved"; delete $("creditInput").dataset.dirty;
+  } catch (e) { $("creditMsg").textContent = e.message; }
+  setTimeout(() => $("creditMsg").textContent = "", 2500);
+  poll();
+};
+$("creditInput").oninput = () => $("creditInput").dataset.dirty = "1";
+
+// seconds since the last poll, for smooth ticking between polls
+const sincePoll = () => (performance.now() - fetchedAt) / 1000;
+
+function liveJobs() { return (state?.jobs || []).filter(j => j.estimate !== undefined); }
+
+function render() {
+  const s = state;
+  const lives = liveJobs();
+  const liveCost = lives.reduce((a, j) => a + (j.cost || 0), 0);
+
+  // credit
+  const c = s.credit;
+  if (c) {
+    const remaining = Math.max(0, c.remaining - liveCost);
+    $("credit").textContent = money2(remaining);
+    const pct = c.allowance ? Math.min(100, 100 * remaining / c.allowance) : 0;
+    const m = $("creditMeter");
+    m.firstElementChild.style.width = pct + "%";
+    m.className = "meter" + (pct <= 0 ? " out" : pct < 20 ? " low" : "");
+    $("creditSub").innerHTML = `${money2(c.used)} of ${money2(c.allowance)} monthly credit used` +
+      (c.billed > 0 ? ` · <span class="err">${money2(c.billed)} billed to card</span>` : "") +
+      ` · resets ${new Date(c.period_end).toLocaleDateString([], {month: "short", day: "numeric"})}`;
+  } else {
+    $("credit").textContent = "—";
+    $("creditSub").innerHTML = s.summary_error ? `<span class="err">${esc(s.summary_error)}</span>` : "loading billing…";
+  }
+
+  // rate
+  $("rate").textContent = s.live_rate_hr > 0 ? money2(s.live_rate_hr) + "/hr" : "$0.00/hr";
+  $("rateSub").textContent = s.live_rate_hr > 0
+    ? `${lives.length} job${lives.length > 1 ? "s" : ""} on GPU · ${money(s.live_rate_hr / 60, 3)} per minute`
+    : "Nothing running — no GPU charges";
+
+  // month
+  const sm = s.summary;
+  $("month").textContent = sm ? money2(sm.metered + liveCost) : "—";
+  $("monthSub").textContent = (sm ? `all Modal usage · ` : "") + `mgpu: ${money2(s.mgpu_today)} today, ${money2(s.mgpu_month)} this month`;
+
+  // live jobs
+  const live = $("live");
+  if (!lives.length) {
+    live.innerHTML = `<div class="card idle"><b>No GPU job running.</b><br>Start one with <span class="mono">mgpu run -- &lt;command&gt;</span></div>`;
+  } else {
+    // keep log scroll position stable across re-renders
+    const keepScroll = {};
+    live.querySelectorAll("pre.log").forEach(p => keepScroll[p.dataset.id] = p.scrollHeight - p.scrollTop - p.clientHeight < 30);
+    live.innerHTML = lives.map(jobCard).join("");
+    live.querySelectorAll("pre.log").forEach(p => { if (keepScroll[p.dataset.id] !== false) p.scrollTop = p.scrollHeight; });
+  }
+
+  // history
+  const past = (s.jobs || []).filter(j => j.estimate === undefined).slice(0, 25);
+  $("history").innerHTML = past.length ? past.map(j => {
+    const run = j.running_since && j.ended ? j.ended - j.running_since : null;
+    const res = j.phase === "done" ? "done" : j.phase === "failed" && j.exit_code != null ? `exit ${j.exit_code}` : PHASE[j.phase] || j.phase;
+    return `<tr>
+      <td class="num" style="white-space:nowrap">${when(j.created)}</td>
+      <td><span class="cmdcell mono" title="${esc(cmdText(j))}">${esc(cmdText(j))}</span></td>
+      <td title="${esc(j.dir)}">${esc(folder(j.dir))}</td>
+      <td>${esc(j.gpu)}</td>
+      <td class="r num">${dur(run)}</td>
+      <td class="r num">${money(j.cost)}</td>
+      <td><span class="pill ${j.phase}" title="${esc(j.detail || "")}">${esc(res)}</span></td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="7" class="sub">No finished jobs yet.</td></tr>`;
+
+  if (!$("creditInput").dataset.dirty && document.activeElement !== $("creditInput")) $("creditInput").value = s.monthly_credit;
+  $("rates").innerHTML = Object.entries(s.rates || {}).map(([g, r]) => `<span>${g} <b class="num">${money2(r)}</b></span>`).join("");
+  $("note").innerHTML = `Job costs are Modal's metered GPU + CPU + memory for each sandbox at your workspace rates. ` +
+    `Remaining credit = your plan's monthly credit (set above; Modal doesn't publish it) − the credit Modal has applied this month. ` +
+    `Saved in <span class="mono">${esc(s.settings_path)}</span>.`;
+}
+
+function jobCard(j) {
+  const e = j.estimate || {};
+  const p = j.progress;
+  let progress = "";
+  if (j.phase === "uploading" && j.upload) {
+    const pct = j.upload.bytes ? 100 * j.upload.sent / j.upload.bytes : 0;
+    progress = progressRow(`Uploading ${j.upload.files} file(s)`, `${(j.upload.sent/1048576).toFixed(1)} / ${(j.upload.bytes/1048576).toFixed(1)} MB`, pct);
+  } else if (j.phase === "running" && p) {
+    progress = progressRow(p.label || "progress", p.total ? `${p.done} / ${p.total} · ${p.percent}%` : `${p.percent}%`, p.percent);
+  } else {
+    progress = progressRow(PHASE[j.phase] || j.phase, "", null);
+  }
+  const running = j.running_since ? (state.now - j.running_since) + sincePoll() : null;
+  const gpuTime = j.started ? (state.now - j.started) + sincePoll() : null;
+  return `<div class="card job">
+    <div class="job-head">
+      <div style="min-width:0;flex:1">
+        <div class="cmd mono">${esc(cmdText(j))}</div>
+        <div class="where">${esc(j.dir)} · ${esc(j.gpu)} · ${esc(j.image)}</div>
+      </div>
+      <div class="actions">
+        <span class="pill ${j.phase}">${PHASE[j.phase] || j.phase}</span>
+        ${j.sandbox_id ? `<button class="stop" data-stop="${esc(j.id)}">Stop GPU</button>` : ""}
+      </div>
+    </div>
+    <div class="job-grid">
+      <div class="kv"><div class="k">Spent so far</div><div class="v num" data-tick="${j.cost ?? 0}" data-rate="${j.started ? j.rate_hr / 3600 : 0}">${money(j.cost ?? 0)}</div><div class="n num">${money2(j.rate_hr)}/hr</div></div>
+      <div class="kv"><div class="k">Estimated total</div><div class="v num">${e.total != null ? money(e.total) : "?"}</div><div class="n" title="${esc(e.basis)}">${e.total != null ? "from " + esc(e.basis) : "max " + money2(e.max_total) + " if it hits the timeout"}</div></div>
+      <div class="kv"><div class="k">Time left</div><div class="v small num">${e.remaining_s != null ? "~" + dur(e.remaining_s - sincePoll()) : "unknown"}</div><div class="n num">running ${dur(running)}</div></div>
+      <div class="kv"><div class="k">GPU on for</div><div class="v small num">${dur(gpuTime)}</div><div class="n num">timeout ${dur(j.timeout)}</div></div>
+    </div>
+    ${progress}
+    ${j.detail ? `<div class="sub err" style="margin-top:8px">${esc(j.detail)}</div>` : ""}
+    <pre class="log" data-id="${esc(j.id)}">${esc(j.log || "waiting for output…")}</pre>
+  </div>`;
+}
+
+function progressRow(label, right, pct) {
+  const indet = pct == null;
+  return `<div class="progress"><div class="row"><span>${esc(label)}</span><span class="num">${esc(right)}</span></div>
+    <div class="bar ${indet ? "indet" : ""}"><i style="width:${indet ? 30 : Math.max(0, Math.min(100, pct))}%"></i></div></div>`;
+}
+
+document.addEventListener("click", async (ev) => {
+  const id = ev.target?.dataset?.stop;
+  if (!id) return;
+  ev.target.disabled = true; ev.target.textContent = "Stopping…";
+  try {
+    const r = await fetch(`/api/jobs/${encodeURIComponent(id)}/stop`, {method: "POST"});
+    if (!r.ok) throw new Error((await r.json()).error || r.status);
+    ev.target.textContent = "Stopped";
+  } catch (e) { ev.target.textContent = "Stop failed"; ev.target.title = e.message; ev.target.disabled = false; }
+  poll();
+});
+
+// tick the live cost every 100ms between polls
+setInterval(() => {
+  document.querySelectorAll("[data-tick]").forEach(el => {
+    el.textContent = money(Number(el.dataset.tick) + Number(el.dataset.rate) * sincePoll());
+  });
+}, 100);
+
+poll();
+setInterval(poll, 2000);
+</script>
+</body>
+</html>

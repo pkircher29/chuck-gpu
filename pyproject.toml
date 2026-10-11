@@ -1,0 +1,20 @@
+[project]
+name = "mgpu"
+version = "0.1.0"
+description = "Run any command on a Modal cloud GPU as if it were local"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = ["modal>=1.6"]
+
+[project.scripts]
+mgpu = "mgpu.cli:main"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["mgpu"]
+
+[tool.setuptools.package-data]
+mgpu = ["static/*"]
