@@ -1,14 +1,14 @@
-# mgpu — Technical Specification
+# chuck-gpu — Technical Specification
 
 ## Overview
 
-mgpu turns a [Modal](https://modal.com) account into a local-feeling cloud GPU.
+chuck-gpu turns a [Modal](https://modal.com) account into a local-feeling cloud GPU.
 Any program that runs as a command — training scripts, inference servers, data
 pipelines, CUDA tools — can be dispatched to a remote NVIDIA GPU with file
 sync, live output streaming, and automatic result download, as if the GPU were
 in the machine running the command.
 
-**Not for games.** mgpu sends jobs (whole commands), not individual CUDA calls.
+**Not for games.** chuck-gpu sends jobs (whole commands), not individual CUDA calls.
 A GPU in Device Manager is not possible over the internet — every kernel launch
 would pay network latency. Anything you run as one command works.
 
@@ -18,9 +18,9 @@ would pay network latency. Anything you run as one command works.
 ┌─────────────────────────────────────────────────┐
 │  Local PC (Windows/Linux/macOS)                 │
 │                                                 │
-│  mgpu CLI ──→ sync up ──→ Modal Sandbox ──→     │
-│  mgpu agent (tray)     persistent Volume        │
-│  mgpu ui (dashboard)   workspace per folder     │
+│  chuck-gpu CLI ──→ sync up ──→ Modal Sandbox ──→     │
+│  chuck-gpu agent (tray)     persistent Volume        │
+│  chuck-gpu ui (dashboard)   workspace per folder     │
 │         ↑               ↓                       │
 │         └── live output ←── stream + tee        │
 │                 ↓                               │
@@ -32,7 +32,7 @@ would pay network latency. Anything you run as one command works.
 
 | Component | File | Role |
 |---|---|---|
-| CLI | `cli.py` | `mgpu run`, `mgpu smi`, `mgpu ui`, `mgpu login`, etc. |
+| CLI | `cli.py` | `chuck-gpu run`, `chuck-gpu smi`, `chuck-gpu ui`, `chuck-gpu login`, etc. |
 | Agent | `agent.py` | System tray icon, always-on dashboard, job watchdog, notifications |
 | Dashboard | `ui.py` + `static/index.html` | HTTP server (:8770), billing, spend, GPU picker, sandbox manager |
 | GPU catalog | `gpus.py` | 12 GPUs, live rates, cheapest-by-default logic, one-shot picks |
@@ -41,9 +41,9 @@ would pay network latency. Anything you run as one command works.
 
 ### Modal integration
 
-- **Volume** (`mgpu-workspaces`): persistent per-project file storage. One
+- **Volume** (`chuck-gpu-workspaces`): persistent per-project file storage. One
   workspace per local folder (SHA-1 of resolved path). Incremental sync via
-  manifest (`~/.mgpu/manifests/<key>.json`).
+  manifest (`~/.chuck_gpu/manifests/<key>.json`).
 - **Sandbox**: `modal.Sandbox.create("sleep", "infinity", gpu=..., image=...)`
   with workspace mounted at `/ws`. Commands run via `sb.exec()`; output
   streamed live and teed to a remote file for drop recovery.
@@ -51,7 +51,7 @@ would pay network latency. Anything you run as one command works.
   metered/credits/billed; `.rates()` for live per-GPU, CPU, memory rates.
   Remaining credit = configurable monthly allowance − credits applied.
 - **Sandbox listing**: `modal.Sandbox.list()` enumerates all live sandboxes
-  on the workspace — not just mgpu jobs — for the dashboard's sandbox panel.
+  on the workspace — not just chuck-gpu jobs — for the dashboard's sandbox panel.
 
 ## GPU Catalog
 
@@ -74,21 +74,21 @@ would pay network latency. Anything you run as one command works.
 
 Rates fetched live from `billing.rates()._rates` dict; fallbacks hardcoded.
 
-## Dashboard (`mgpu ui` → http://127.0.0.1:8770)
+## Dashboard (`chuck-gpu ui` → http://127.0.0.1:8770)
 
 ### Cards
 
 - **Remaining credit**: monthly allowance − credits used, with progress meter
   and "hours of T4 left" estimate. Configurable allowance (default $30).
-- **Spending now**: live $/hr across all running mgpu jobs.
-- **This month**: all Modal usage (every app), plus mgpu's own today/month.
+- **Spending now**: live $/hr across all running chuck-gpu jobs.
+- **This month**: all Modal usage (every app), plus chuck-gpu's own today/month.
 - **Active GPUs**: count of live sandboxes on the workspace.
 
 ### Sections
 
 - **GPU picker**: dropdown + spec cards (price, VRAM, arch, use-case).
   Defaults to cheapest; one-shot pick for next run only.
-- **Active Sandboxes**: all live sandboxes (mgpu + other), with ID, tags,
+- **Active Sandboxes**: all live sandboxes (chuck-gpu + other), with ID, tags,
   and Kill button. POST `/api/sandbox-kill`.
 - **Working on**: live job cards with phase steps (upload → start → run →
   copy back), progress bar, cost breakdown (GPU/CPU/Memory split bar),
@@ -101,7 +101,7 @@ Rates fetched live from `billing.rates()._rates` dict; fallbacks hardcoded.
 ### Theme
 
 Light/dark via `prefers-color-scheme` + manual toggle (stored in
-`localStorage["mgpu-theme"]`). Toggle button in header.
+`localStorage["chuck-gpu-theme"]`). Toggle button in header.
 
 ## Packaging
 
@@ -111,31 +111,31 @@ Light/dark via `prefers-color-scheme` + manual toggle (stored in
 powershell -ExecutionPolicy Bypass -File packaging\build.ps1
 ```
 
-PyInstaller spec (`packaging/mgpu.spec`) produces two executables in one
-folder (`dist/mgpu/`):
+PyInstaller spec (`packaging/chuck-gpu.spec`) produces two executables in one
+folder (`dist/chuck-gpu/`):
 
 | EXE | Type | Role |
 |---|---|---|
-| `mgpu.exe` | console | CLI: run, smi, ui, login, etc. |
-| `mgpu-agent.exe` | windowed | Tray agent: always-on dashboard, watchdog, notifications |
+| `chuck-gpu.exe` | console | CLI: run, smi, ui, login, etc. |
+| `chuck-gpu-agent.exe` | windowed | Tray agent: always-on dashboard, watchdog, notifications |
 
-Output: `dist/mgpu/` (folder) + `dist/mgpu-windows.zip` (portable archive).
+Output: `dist/chuck-gpu/` (folder) + `dist/chuck-gpu-windows.zip` (portable archive).
 
 ### Install (per-user, no admin)
 
 ```
-powershell -ExecutionPolicy Bypass -File dist\mgpu\install.ps1
+powershell -ExecutionPolicy Bypass -File dist\chuck-gpu\install.ps1
 ```
 
-- Copies to `%LOCALAPPDATA%\Programs\mgpu`
+- Copies to `%LOCALAPPDATA%\Programs\chuck-gpu`
 - Adds to user PATH
-- Starts `mgpu-agent.exe` (tray icon)
-- Registers for Windows startup (`HKCU\...\Run\mgpu`)
-- Uninstall: `install.ps1 -Uninstall` (preserves `~/.modal.toml` and `~/.mgpu/`)
+- Starts `chuck-gpu-agent.exe` (tray icon)
+- Registers for Windows startup (`HKCU\...\Run\chuck-gpu`)
+- Uninstall: `install.ps1 -Uninstall` (preserves `~/.modal.toml` and `~/.chuck_gpu/`)
 
-### Tray agent (`mgpu-agent.exe` / `mgpu agent`)
+### Tray agent (`chuck-gpu-agent.exe` / `chuck-gpu agent`)
 
-- Single-instance (Windows mutex `Local\mgpu-agent`)
+- Single-instance (Windows mutex `Local\chuck-gpu-agent`)
 - Keeps dashboard serving at :8770
 - Polls job state every 5s; stops orphaned sandboxes (closed terminal)
 - Tray icon shows running/idle/error state with live cost
@@ -147,7 +147,7 @@ powershell -ExecutionPolicy Bypass -File dist\mgpu\install.ps1
 
 ```
 ~/.modal.toml                    Modal credentials (shared with modal CLI)
-~/.mgpu/
+~/.chuck_gpu/
   config.toml                    monthly_credit, ui_port, auto_ui
   jobs/<id>.json                 per-job state (atomic writes)
   jobs/<id>.log                  per-job output log
@@ -167,7 +167,7 @@ powershell -ExecutionPolicy Bypass -File dist\mgpu\install.ps1
 | POST | `/api/next-gpu` | Set one-shot GPU pick |
 | POST | `/api/settings` | Update monthly_credit |
 | POST | `/api/sandbox-kill` | Kill any sandbox by ID |
-| POST | `/api/jobs/<id>/stop` | Stop a specific mgpu job |
+| POST | `/api/jobs/<id>/stop` | Stop a specific chuck-gpu job |
 | POST | `/api/account/login-browser` | Start Modal OAuth browser flow |
 | POST | `/api/account/login-token` | Login with token ID + secret |
 | POST | `/api/account/login-cancel` | Cancel browser login |
@@ -179,7 +179,7 @@ localhost. Same-origin check on POST.
 
 ## Security
 
-- Credentials stay in `~/.modal.toml` (Modal's own config); mgpu never
+- Credentials stay in `~/.modal.toml` (Modal's own config); chuck-gpu never
   stores or transmits them elsewhere.
 - Dashboard binds to 127.0.0.1 only; refuses non-local Host headers.
 - No credentials, tokens, or personal data in the git repo or builds.

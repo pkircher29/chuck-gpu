@@ -1,11 +1,11 @@
-"""`mgpu ui` — local dashboard: what's running, what it costs, what's left.
+"""`chuck-gpu ui` — local dashboard: what's running, what it costs, what's left.
 
 Spend comes from three places, most precise first:
   * per-sandbox metered usage (GPU / CPU / memory nanoseconds) × your
-    workspace's live billing rates — the cost of each mgpu job;
+    workspace's live billing rates — the cost of each chuck-gpu job;
   * the workspace billing summary for this month — everything Modal billed,
     including other apps, and how much plan credit has been used;
-  * `monthly_credit` from ~/.mgpu/config.toml — Modal doesn't expose the plan
+  * `monthly_credit` from ~/.chuck_gpu/config.toml — Modal doesn't expose the plan
     allowance, so remaining credit = allowance − credits applied this month.
 """
 from __future__ import annotations
@@ -22,10 +22,10 @@ from decimal import Decimal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from mgpu import account, gpus
-from mgpu.jobs import JOBS_DIR, TERMINAL, load_jobs, pid_alive, save_job, tail_log
+from chuck_gpu import account, gpus
+from chuck_gpu.jobs import JOBS_DIR, TERMINAL, load_jobs, pid_alive, save_job, tail_log
 
-SETTINGS_PATH = Path.home() / ".mgpu" / "config.toml"
+SETTINGS_PATH = Path.home() / ".chuck_gpu" / "config.toml"
 SETTINGS_DEFAULTS = {"monthly_credit": 30.0, "ui_port": 8770, "auto_ui": True,
                      "start_with_windows": True}
 STATIC = Path(__file__).parent / "static"
@@ -44,7 +44,7 @@ def load_settings() -> dict:
     except OSError:
         pass
     except tomllib.TOMLDecodeError as e:
-        print(f"[mgpu ui] ignoring bad {SETTINGS_PATH}: {e}", file=sys.stderr)
+        print(f"[chuck-gpu ui] ignoring bad {SETTINGS_PATH}: {e}", file=sys.stderr)
     return s
 
 
@@ -94,7 +94,7 @@ class Modal:
         self.rates = {k: float(r[k]) for k in r}
         self.rates_at = time.time()
         try:
-            gpus.save_rates(self.rates)  # so `mgpu run` knows today's cheapest GPU
+            gpus.save_rates(self.rates)  # so `chuck-gpu run` knows today's cheapest GPU
         except OSError:
             pass
 
@@ -145,7 +145,7 @@ class Modal:
         modal.Sandbox.from_id(sandbox_id).terminate()
 
     def list_sandboxes(self) -> list[dict]:
-        """All live sandboxes on this workspace (not just mgpu jobs)."""
+        """All live sandboxes on this workspace (not just chuck-gpu jobs)."""
         try:
             sbs = list(modal.Sandbox.list())
         except Exception:
@@ -255,7 +255,7 @@ def build_state() -> dict:
                 except Exception:
                     pass
             job.update(phase="lost", ended=job.get("ended") or now,
-                       detail="mgpu process exited without finishing; remote sandbox stopped")
+                       detail="chuck-gpu process exited without finishing; remote sandbox stopped")
             save_job(job)
 
         live = job["phase"] not in TERMINAL
@@ -432,7 +432,7 @@ class Handler(BaseHTTPRequestHandler):
                 M.stop(job["sandbox_id"])
             except Exception as e:
                 return self._json({"error": str(e)}, 500)
-            # the running `mgpu run` owns the job file; leave it a marker instead
+            # the running `chuck-gpu run` owns the job file; leave it a marker instead
             (JOBS_DIR / f"{job['id']}.stop").touch()
             return self._json({"ok": True})
         if self.path == "/api/sandbox-kill":
@@ -486,13 +486,13 @@ def serve(open_browser: bool = True, port: int | None = None) -> int:
     try:
         httpd = start_server(port)
     except OSError as e:
-        print(f"[mgpu ui] port {port} busy ({e}) — is the dashboard already running?",
+        print(f"[chuck-gpu ui] port {port} busy ({e}) — is the dashboard already running?",
               file=sys.stderr)
         if open_browser:
             webbrowser.open(f"http://127.0.0.1:{port}")
         return 1
     url = f"http://127.0.0.1:{port}"
-    print(f"[mgpu ui] {url}", file=sys.stderr, flush=True)
+    print(f"[chuck-gpu ui] {url}", file=sys.stderr, flush=True)
     if open_browser:
         webbrowser.open(url)
     try:

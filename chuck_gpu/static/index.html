@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>mgpu Dashboard</title>
+<title>Chuck GPU Dashboard</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='10' width='56' height='44' rx='9' fill='%232f6fde'/%3E%3Crect x='18' y='21' width='28' height='22' rx='4' fill='white'/%3E%3C/svg%3E">
 <style>
 :root {
@@ -91,7 +91,7 @@ select:focus, input:focus, button:focus-visible { outline: 2px solid color-mix(i
 .pill.done { color: var(--good); background: var(--good-soft); }
 .tag { display: inline-block; font-size: 11px; font-weight: 650; padding: 1px 7px; border-radius: 6px; background: var(--good-soft); color: var(--good); vertical-align: 1px; }
 .tag.pick { background: var(--accent-soft); color: var(--accent); }
-.tag.mgpu { background: var(--accent-soft); color: var(--accent); }
+.tag.chuck_gpu { background: var(--accent-soft); color: var(--accent); }
 @keyframes pulse { 50% { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { .pill.running::before { animation: none; } }
 
@@ -198,7 +198,7 @@ tbody.gpus tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   <header>
     <div class="brand">
       <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="10" width="56" height="44" rx="9" fill="#2f6fde"/><rect x="18" y="21" width="28" height="22" rx="4" fill="#fff"/><g fill="#2f6fde"><rect x="15" y="4" width="4" height="6"/><rect x="26" y="4" width="4" height="6"/><rect x="37" y="4" width="4" height="6"/><rect x="48" y="4" width="4" height="6"/><rect x="15" y="54" width="4" height="6"/><rect x="26" y="54" width="4" height="6"/><rect x="37" y="54" width="4" height="6"/><rect x="48" y="54" width="4" height="6"/></g></svg>
-      <div><h1>mgpu</h1><small>your Modal account as a cloud GPU</small></div>
+      <div><h1>chuck-gpu</h1><small>your Modal account as a cloud GPU</small></div>
     </div>
     <div class="acct">
       <button class="theme-btn" id="themeBtn" title="Toggle theme">&#9681;</button>
@@ -209,7 +209,7 @@ tbody.gpus tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 
   <div class="card login" id="login" hidden>
     <h2>Connect your Modal account</h2>
-    <p>mgpu runs your jobs on <b>your own</b> Modal account, and Modal bills that account.
+    <p>chuck-gpu runs your jobs on <b>your own</b> Modal account, and Modal bills that account.
        No account yet? <a href="https://modal.com/signup" target="_blank" rel="noopener">Sign up at modal.com</a>; new accounts get free monthly credit.</p>
     <button class="primary" id="browserLogin">Log in with Modal</button>
     <div class="wait" id="loginWait" hidden></div>
@@ -221,7 +221,7 @@ tbody.gpus tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
       <span class="actions"><button class="link" id="loginBack" hidden>Cancel</button><button id="tokenLogin">Connect</button></span>
     </div>
     <div class="formerr" id="loginErr"></div>
-    <p class="note" style="margin:16px 0 0">The token is saved in Modal's own config file (<span class="mono" id="cfgPath">~/.modal.toml</span>), the same place the <span class="mono">modal</span> CLI keeps it. mgpu doesn't store it anywhere else or send it anywhere except Modal.</p>
+    <p class="note" style="margin:16px 0 0">The token is saved in Modal's own config file (<span class="mono" id="cfgPath">~/.modal.toml</span>), the same place the <span class="mono">modal</span> CLI keeps it. chuck-gpu doesn't store it anywhere else or send it anywhere except Modal.</p>
   </div>
 
   <div id="main" hidden>
@@ -345,7 +345,7 @@ function alertLine(msg) { $("status").textContent = msg; $("dot").className = "d
 
 // ── theme ──────────────────────────────────────────────────────────────────
 function initTheme() {
-  const saved = localStorage.getItem("mgpu-theme");
+  const saved = localStorage.getItem("chuck-gpu-theme");
   if (saved) document.documentElement.dataset.theme = saved;
 }
 $("themeBtn").onclick = () => {
@@ -353,7 +353,7 @@ $("themeBtn").onclick = () => {
   const isDark = cur === "dark" || (!cur && matchMedia("(prefers-color-scheme: dark)").matches);
   const next = isDark ? "light" : "dark";
   document.documentElement.dataset.theme = next;
-  localStorage.setItem("mgpu-theme", next);
+  localStorage.setItem("chuck-gpu-theme", next);
 };
 initTheme();
 
@@ -379,7 +379,7 @@ function renderSandboxes(s) {
         <span class="full">${esc(sb.id)}</span>
       </div>
       <div class="sb-tags">
-        ${isMgpu ? '<span class="tag mgpu">mgpu job</span>' : '<span class="sb-src">other</span>'}
+        ${isMgpu ? '<span class="tag chuck-gpu">chuck-gpu job</span>' : '<span class="sb-src">other</span>'}
         ${tags}
       </div>
       <button class="kill" data-kill="${esc(sb.id)}">Kill</button>
@@ -489,9 +489,9 @@ function renderPicker(s) {
   }
   const extra = cheap && g ? g.rate_hr - cheap.rate_hr : 0;
   $("pickHint").innerHTML = picked
-    ? `<span class="tag pick">picked</span> Used by your <b>next</b> <span class="mono">mgpu run</span> only, then it goes back to the cheapest. ` +
+    ? `<span class="tag pick">picked</span> Used by your <b>next</b> <span class="mono">chuck-gpu run</span> only, then it goes back to the cheapest. ` +
       `${money2(extra)}/hr more than ${esc(cheap.name)}. <button class="link" id="pickReset">Use cheapest</button>`
-    : `Every job runs on the cheapest GPU unless you pick another here (for one job), pass <span class="mono">--gpu</span>, or set <span class="mono">gpu</span> in a project's <span class="mono">mgpu.toml</span>.`;
+    : `Every job runs on the cheapest GPU unless you pick another here (for one job), pass <span class="mono">--gpu</span>, or set <span class="mono">gpu</span> in a project's <span class="mono">chuck-gpu.toml</span>.`;
 }
 async function pickGpu(name) {
   try { await post("/api/next-gpu", {gpu: name || ""}); } catch (e) { alertLine(e.message); }
@@ -531,13 +531,13 @@ function render() {
 
   const sm = s.summary;
   $("month").textContent = sm ? money2(sm.metered + liveCost) : "—";
-  $("monthSub").innerHTML = (sm ? `all Modal usage this month<br>` : "") + `mgpu: ${money2(s.mgpu_today)} today · ${money2(s.mgpu_month)} this month`;
+  $("monthSub").innerHTML = (sm ? `all Modal usage this month<br>` : "") + `chuck-gpu: ${money2(s.mgpu_today)} today · ${money2(s.mgpu_month)} this month`;
 
   const live = $("live");
   $("liveCount").textContent = lives.length ? `${lives.length} running` : "";
   if (!lives.length) {
     live.innerHTML = `<div class="card idle"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="10" width="56" height="44" rx="9" fill="none" stroke="currentColor" stroke-width="4"/><rect x="20" y="23" width="24" height="18" rx="3" fill="currentColor"/></svg>
-      <div><b>No GPU job running</b>Start one from any folder: <span class="mono">mgpu run -- python train.py</span></div></div>`;
+      <div><b>No GPU job running</b>Start one from any folder: <span class="mono">chuck-gpu run -- python train.py</span></div></div>`;
   } else {
     const keepScroll = {};
     live.querySelectorAll("pre.log").forEach(p => keepScroll[p.dataset.id] = p.scrollHeight - p.scrollTop - p.clientHeight < 30);
@@ -572,7 +572,7 @@ function render() {
   $("settingsPath").textContent = s.settings_path || "";
   $("costNote").innerHTML = `Modal bills each job for its GPU <b>plus</b> the CPU cores and memory it reserves: ` +
     `${money(s.cpu_rate_hr, 4)} per core-hour and ${money(s.mem_rate_hr, 4)} per GiB-hour at your rates. ` +
-    `Job costs are Modal's metered usage for each sandbox, never shown below the reserved minimum (Modal's per-job figure can lag on long jobs). "This month" covers every Modal app on your account, not just mgpu.`;
+    `Job costs are Modal's metered usage for each sandbox, never shown below the reserved minimum (Modal's per-job figure can lag on long jobs). "This month" covers every Modal app on your account, not just chuck-gpu.`;
 }
 
 function jobCard(j) {

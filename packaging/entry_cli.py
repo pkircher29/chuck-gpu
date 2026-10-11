@@ -1,5 +1,5 @@
 import sys
 
-from mgpu.cli import main
+from chuck_gpu.cli import main
 
 sys.exit(main())

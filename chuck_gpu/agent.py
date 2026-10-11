@@ -1,4 +1,4 @@
-"""`mgpu agent` / mgpu-agent.exe — the always-on background half of mgpu.
+"""`chuck-gpu agent` / chuck-gpu-agent.exe — the always-on background half of chuck-gpu.
 
 Lives in the system tray and keeps the dashboard (http://127.0.0.1:8770)
 serving, so it is there the moment you want it. It also keeps watching jobs
@@ -19,9 +19,9 @@ import webbrowser
 from pathlib import Path
 
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-RUN_NAME = "mgpu"
-MUTEX_NAME = "Local\\mgpu-agent"
-LOG = Path.home() / ".mgpu" / "agent.log"
+RUN_NAME = "chuck-gpu"
+MUTEX_NAME = "Local\\chuck-gpu-agent"
+LOG = Path.home() / ".chuck_gpu" / "agent.log"
 
 
 # ── icon ────────────────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ def launch_command() -> str:
     if getattr(sys, "frozen", False):
         return f'"{sys.executable}"'
     pyw = Path(sys.executable).with_name("pythonw.exe")
-    return f'"{pyw if pyw.exists() else sys.executable}" -m mgpu agent'
+    return f'"{pyw if pyw.exists() else sys.executable}" -m chuck-gpu agent'
 
 
 def autostart_enabled() -> bool:
@@ -103,7 +103,7 @@ def _money(v) -> str:
 
 class Agent:
     def __init__(self):
-        from mgpu import ui
+        from chuck_gpu import ui
         self.ui = ui
         self.settings = ui.load_settings()
         self.port = int(self.settings["ui_port"])
@@ -119,7 +119,7 @@ class Agent:
         try:
             self.httpd = self.ui.start_server(self.port)
         except OSError:
-            # an older `mgpu ui` already holds the port; the dashboard still works
+            # an older `chuck-gpu ui` already holds the port; the dashboard still works
             self.status = f"dashboard already running on :{self.port}"
             return
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
@@ -175,12 +175,12 @@ class Agent:
         if not self.icon:
             return
         self.icon.icon = make_icon(64, self.state)
-        self.icon.title = ("mgpu — " + self.status)[:127]  # Windows tooltip limit
+        self.icon.title = ("chuck-gpu — " + self.status)[:127]  # Windows tooltip limit
         self.icon.update_menu()
 
     def notify(self, title: str, msg: str) -> None:
         try:
-            self.icon.notify(msg, f"mgpu: {title}")
+            self.icon.notify(msg, f"chuck-gpu: {title}")
         except Exception:
             pass
 
@@ -208,7 +208,7 @@ class Agent:
             except OSError:
                 pass
         self.start_server()
-        from mgpu import gpus
+        from chuck_gpu import gpus
 
         def gpu_item(g: dict):
             name, cheap = g["name"], g["cheapest"]
@@ -230,9 +230,9 @@ class Agent:
             Menu.SEPARATOR,
             Item("Start with Windows", self.toggle_autostart,
                  checked=lambda _: autostart_enabled()),
-            Item("Quit mgpu", self.quit),
+            Item("Quit chuck-gpu", self.quit),
         )
-        self.icon = pystray.Icon("mgpu", make_icon(64), "mgpu — starting…", menu)
+        self.icon = pystray.Icon("chuck-gpu", make_icon(64), "chuck-gpu — starting…", menu)
         threading.Thread(target=self.poll, daemon=True).start()
         self.icon.run()
         return 0
@@ -244,10 +244,10 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout = sys.stderr = open(LOG, "a", encoding="utf-8", buffering=1)
     if not _single_instance():
         # already running: just bring up the dashboard
-        from mgpu.ui import load_settings
+        from chuck_gpu.ui import load_settings
         webbrowser.open(f"http://127.0.0.1:{int(load_settings()['ui_port'])}")
         return 0
-    print(f"[mgpu agent] start {time.strftime('%Y-%m-%d %H:%M:%S')}", flush=True)
+    print(f"[chuck-gpu agent] start {time.strftime('%Y-%m-%d %H:%M:%S')}", flush=True)
     return Agent().run()
 
 

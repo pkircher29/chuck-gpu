@@ -1,9 +1,9 @@
-"""mgpu - run any command on a Modal cloud GPU as if it were local.
+"""chuck-gpu - run any command on a Modal cloud GPU as if it were local.
 
-    mgpu login                    # once: connect your Modal account
-    mgpu run -- python train.py --epochs 10
-    mgpu run --gpu A100 --image torch -- python finetune.py
-    mgpu smi                      # nvidia-smi on the remote GPU
+    chuck-gpu login                    # once: connect your Modal account
+    chuck-gpu run -- python train.py --epochs 10
+    chuck-gpu run --gpu A100 --image torch -- python finetune.py
+    chuck-gpu smi                      # nvidia-smi on the remote GPU
 
 What happens on `run`:
   1. the current directory is synced (incrementally) to a persistent Modal
@@ -14,7 +14,7 @@ What happens on `run`:
   3. every file the command created or changed is copied back into the local
      directory, so outputs land exactly where a local run would put them.
 
-Project defaults can live in ./mgpu.toml (see README).
+Project defaults can live in ./chuck-gpu.toml (see README).
 """
 from __future__ import annotations
 
@@ -30,10 +30,10 @@ import time
 import tomllib
 from pathlib import Path
 
-APP_NAME = "mgpu"
-VOLUME_NAME = "mgpu-workspaces"
+APP_NAME = "chuck-gpu"
+VOLUME_NAME = "chuck-gpu-workspaces"
 MOUNT = "/ws"
-STATE_DIR = Path.home() / ".mgpu"
+STATE_DIR = Path.home() / ".chuck_gpu"
 
 IMAGES = {
     # name: (registry image, add_python) — add_python None means the image has one
@@ -42,12 +42,12 @@ IMAGES = {
     "cuda": ("nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04", "3.11"),
     "cuda-devel": ("nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04", "3.11"),
 }
-from mgpu.gpus import GPUS  # noqa: E402  (catalog + prices live in gpus.py)
+from chuck_gpu.gpus import GPUS  # noqa: E402  (catalog + prices live in gpus.py)
 
 DEFAULT_EXCLUDES = [
     ".git", ".hg", ".svn", ".venv", "venv", "env", "node_modules", "__pycache__",
     "*.pyc", ".mypy_cache", ".pytest_cache", ".ruff_cache", ".idea", ".vscode",
-    ".DS_Store", "Thumbs.db", ".mgpu",
+    ".DS_Store", "Thumbs.db", ".chuck_gpu",
 ]
 
 DEFAULTS = {
@@ -72,13 +72,13 @@ DEFAULTS = {
 
 def load_config(root: Path) -> dict:
     cfg = dict(DEFAULTS)
-    path = root / "mgpu.toml"
+    path = root / "chuck-gpu.toml"
     if path.exists():
         with open(path, "rb") as f:
             data = tomllib.load(f)
         unknown = set(data) - set(DEFAULTS)
         if unknown:
-            sys.exit(f"mgpu.toml: unknown keys {sorted(unknown)}")
+            sys.exit(f"chuck-gpu.toml: unknown keys {sorted(unknown)}")
         cfg.update(data)
     return cfg
 
@@ -161,7 +161,7 @@ def human(n: float) -> str:
 
 
 def log(msg: str) -> None:
-    print(f"\033[36m[mgpu]\033[0m {msg}", file=sys.stderr, flush=True)
+    print(f"\033[36m[chuck-gpu]\033[0m {msg}", file=sys.stderr, flush=True)
 
 
 # ── modal plumbing ──────────────────────────────────────────────────────────
@@ -199,7 +199,7 @@ def sync_up(vol, key: str, root: Path, cfg: dict, force: bool, job=None) -> None
     limit = float(cfg["max_upload_gb"]) * 1024 ** 3
     if total > limit:
         sys.exit(f"refusing to upload {human(total)} (> max_upload_gb={cfg['max_upload_gb']}); "
-                 "add excludes to .mgpuignore or raise max_upload_gb in mgpu.toml")
+                 "add excludes to .mgpuignore or raise max_upload_gb in chuck-gpu.toml")
     if not changed:
         log(f"workspace up to date ({len(local)} files)")
         return
@@ -230,7 +230,7 @@ def sync_up(vol, key: str, root: Path, cfg: dict, force: bool, job=None) -> None
     log(f"upload done in {time.time() - t0:.1f}s")
 
 
-REMOTE_OUT, REMOTE_RC = "/tmp/.mgpu-out", "/tmp/.mgpu-rc"
+REMOTE_OUT, REMOTE_RC = "/tmp/.chuck_gpu-out", "/tmp/.chuck_gpu-rc"
 
 
 def emit(text: str, out, job=None) -> None:
@@ -265,7 +265,7 @@ def sync_down(vol, key: str, root: Path, changed: list[tuple[str, int]]) -> None
     for rel, _size in changed:
         dest = root / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
-        tmp = dest.with_name(dest.name + ".mgpu-part")
+        tmp = dest.with_name(dest.name + ".chuck_gpu-part")
         with open(tmp, "wb") as f:
             for chunk in vol.read_file(f"/{key}/{rel}"):
                 f.write(chunk)
@@ -372,7 +372,7 @@ def ensure_ui() -> None:
     """Start the dashboard in the background if it isn't already up."""
     import socket
     import subprocess
-    from mgpu.ui import load_settings
+    from chuck_gpu.ui import load_settings
     settings = load_settings()
     if not settings["auto_ui"]:
         return
@@ -384,11 +384,11 @@ def ensure_ui() -> None:
             return
     exe = Path(sys.executable)
     if getattr(sys, "frozen", False):
-        agent = exe.with_name("mgpu-agent.exe")
+        agent = exe.with_name("chuck-gpu-agent.exe")
         argv = [str(agent)] if agent.exists() else [str(exe), "ui", "--no-browser"]
     else:
         pyw = exe.with_name("pythonw.exe")
-        argv = [str(pyw if pyw.exists() else exe), "-m", "mgpu", "agent"]
+        argv = [str(pyw if pyw.exists() else exe), "-m", "chuck-gpu", "agent"]
     flags = 0
     if os.name == "nt":
         flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | 0x08000000
@@ -402,12 +402,12 @@ def ensure_ui() -> None:
 def modal_cli() -> list[str]:
     """argv prefix that runs Modal's own CLI, also from the packaged .exe."""
     if getattr(sys, "frozen", False):
-        return [str(Path(sys.executable).with_name("mgpu.exe")), "_modal"]
+        return [str(Path(sys.executable).with_name("chuck-gpu.exe")), "_modal"]
     return [sys.executable, "-m", "modal"]
 
 
 def cmd_ui(args) -> int:
-    from mgpu.ui import serve
+    from chuck_gpu.ui import serve
     return serve(open_browser=not args.no_browser, port=args.port)
 
 
@@ -417,16 +417,16 @@ def cmd_run(args) -> int:
     root = Path(args.dir).resolve()
     cfg = load_config(root)
     if not args.command:
-        sys.exit("nothing to run: mgpu run [options] -- <command ...>")
-    # GPU: --gpu, else the one-shot dashboard pick, else mgpu.toml, else cheapest
-    from mgpu import gpus
+        sys.exit("nothing to run: chuck-gpu run [options] -- <command ...>")
+    # GPU: --gpu, else the one-shot dashboard pick, else chuck-gpu.toml, else cheapest
+    from chuck_gpu import gpus
     toml_gpu = cfg["gpu"]
     if args.gpu:
         gpu_source = "--gpu"
     elif (picked := gpus.take_next()):
         cfg["gpu"], gpu_source = picked, "picked in the dashboard (next job resets to cheapest)"
     elif toml_gpu:
-        gpu_source = "mgpu.toml"
+        gpu_source = "chuck-gpu.toml"
     else:
         cfg["gpu"], gpu_source = gpus.cheapest(), "cheapest"
     for field in ("gpu", "image", "timeout", "add_python", "cpu", "memory"):
@@ -447,7 +447,7 @@ def cmd_run(args) -> int:
     log(f"GPU: {cfg['gpu']} (${rate:.2f}/hr, {gpus.CATALOG[cfg['gpu']][1]} GB) — {gpu_source}")
 
     import modal
-    from mgpu.jobs import JobRecorder
+    from chuck_gpu.jobs import JobRecorder
     key = workspace_key(root)
     ensure_ui()
     job = JobRecorder(root=root, key=key, command=args.command, gpu=cfg["gpu"],
@@ -473,7 +473,7 @@ def cmd_run(args) -> int:
         log(f"sandbox {sb.object_id} up in {time.time() - t0:.0f}s — running: "
             f"{shlex.join(args.command)}")
         job.update(phase="running", running_since=time.time())
-        marker = "/tmp/.mgpu-start"
+        marker = "/tmp/.chuck_gpu-start"
         capture(sb, ["sh", "-c", f": > {marker}; sleep 1"])
         cmd = shlex.join(args.command)
         try:
@@ -496,7 +496,7 @@ def cmd_run(args) -> int:
             patterns = DEFAULT_EXCLUDES + list(cfg["exclude"]) + read_ignore(root)
             for line in listing.splitlines():
                 rel, _, size = line.partition("\t")
-                if rel and not rel.endswith(".mgpu-part") and not excluded(rel, patterns):
+                if rel and not rel.endswith(".chuck_gpu-part") and not excluded(rel, patterns):
                     changed.append((rel, int(size or 0)))
     except KeyboardInterrupt:
         interrupted = True
@@ -536,7 +536,7 @@ def cmd_run(args) -> int:
 def cmd_smi(args) -> int:
     cfg = dict(DEFAULTS)
     cfg["image"] = "cuda"
-    from mgpu import gpus
+    from chuck_gpu import gpus
     gpu = args.gpu or gpus.cheapest()
     log(f"starting {gpu} sandbox …")
     sb, _ = open_sandbox(cfg, Path.cwd(), None, gpu)
@@ -568,14 +568,14 @@ def cmd_rm(args) -> int:
 
 
 def require_login() -> None:
-    from mgpu import account
+    from chuck_gpu import account
     if not account.status(lookup=False)["logged_in"]:
-        sys.exit("mgpu: not logged in to Modal. Run `mgpu login` (or log in from "
-                 "the dashboard: `mgpu ui`).")
+        sys.exit("chuck-gpu: not logged in to Modal. Run `chuck-gpu login` (or log in from "
+                 "the dashboard: `chuck-gpu ui`).")
 
 
 def cmd_login(args) -> int:
-    from mgpu import account
+    from chuck_gpu import account
     if args.token_id or args.token_secret:
         if not (args.token_id and args.token_secret):
             sys.exit("give both --token-id and --token-secret")
@@ -595,7 +595,7 @@ def cmd_login(args) -> int:
 
 
 def cmd_logout(args) -> int:
-    from mgpu import account
+    from chuck_gpu import account
     before = account.status(lookup=False)
     if not before["logged_in"]:
         log("not logged in")
@@ -609,10 +609,10 @@ def cmd_logout(args) -> int:
 
 
 def cmd_whoami(args) -> int:
-    from mgpu import account
+    from chuck_gpu import account
     s = account.status()
     if not s["logged_in"]:
-        print("not logged in — run `mgpu login`")
+        print("not logged in — run `chuck-gpu login`")
         return 1
     print(f"{s['workspace'] or s['username']}  (profile {s['profile']}"
           f"{', from environment' if s['via_env'] else ''})")
@@ -642,7 +642,7 @@ def main(argv: list[str] | None = None) -> int:
         i = argv.index("--")
         argv, command = argv[:i], argv[i + 1:]
 
-    p = argparse.ArgumentParser(prog="mgpu", description=__doc__.split("\n")[0],
+    p = argparse.ArgumentParser(prog="chuck-gpu", description=__doc__.split("\n")[0],
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
 
@@ -677,7 +677,7 @@ def main(argv: list[str] | None = None) -> int:
 
     rm = sub.add_parser("rm", help="delete this directory's remote workspace")
     rm.add_argument("--dir", default=".")
-    rm.add_argument("--key", help="workspace name from `mgpu ls`")
+    rm.add_argument("--key", help="workspace name from `chuck-gpu ls`")
     rm.set_defaults(func=cmd_rm)
 
     li = sub.add_parser("login", help="connect your Modal account (opens the browser, or use a token)")
@@ -688,11 +688,11 @@ def main(argv: list[str] | None = None) -> int:
     lo = sub.add_parser("logout", help="remove the active Modal token from this machine")
     lo.set_defaults(func=cmd_logout)
 
-    wh = sub.add_parser("whoami", help="show which Modal account mgpu uses")
+    wh = sub.add_parser("whoami", help="show which Modal account chuck-gpu uses")
     wh.set_defaults(func=cmd_whoami)
 
     ag = sub.add_parser("agent", help="run in the system tray: dashboard always on, job alerts")
-    ag.set_defaults(func=lambda a: __import__("mgpu.agent", fromlist=["main"]).main())
+    ag.set_defaults(func=lambda a: __import__("chuck-gpu.agent", fromlist=["main"]).main())
 
     args = p.parse_args(argv)
     args.command = command

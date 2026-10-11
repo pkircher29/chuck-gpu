@@ -1,6 +1,6 @@
-"""Job records shared by `mgpu run` (writer) and `mgpu ui` (reader).
+"""Job records shared by `chuck-gpu run` (writer) and `chuck-gpu ui` (reader).
 
-Each run gets ~/.mgpu/jobs/<job_id>.json (state, rewritten atomically) and
+Each run gets ~/.chuck_gpu/jobs/<job_id>.json (state, rewritten atomically) and
 <job_id>.log (the command's combined output, appended as it streams).
 """
 from __future__ import annotations
@@ -12,7 +12,7 @@ import time
 import uuid
 from pathlib import Path
 
-JOBS_DIR = Path.home() / ".mgpu" / "jobs"
+JOBS_DIR = Path.home() / ".chuck_gpu" / "jobs"
 TERMINAL = {"done", "failed", "stopped", "lost"}
 
 # tqdm:  " 42%|████▏     | 420/1000 [01:02<01:26,  6.71it/s]"

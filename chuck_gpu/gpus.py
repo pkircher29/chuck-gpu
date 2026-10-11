@@ -1,8 +1,8 @@
-"""GPU catalog, live prices, and which GPU the next `mgpu run` uses.
+"""GPU catalog, live prices, and which GPU the next `chuck-gpu run` uses.
 
 The next job runs on the cheapest GPU unless you deliberately pick another:
 in the dashboard / tray (a one-shot pick, used by the next run and then
-cleared), with `--gpu`, or with `gpu = …` in a project's mgpu.toml.
+cleared), with `--gpu`, or with `gpu = …` in a project's chuck-gpu.toml.
 """
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import json
 import time
 from pathlib import Path
 
-STATE_DIR = Path.home() / ".mgpu"
+STATE_DIR = Path.home() / ".chuck_gpu"
 RATES_CACHE = STATE_DIR / "rates.json"
 NEXT_GPU = STATE_DIR / "next_gpu.json"
 

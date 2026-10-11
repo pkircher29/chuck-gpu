@@ -1,7 +1,7 @@
-"""Which Modal account mgpu uses: status, log in, log out, switch.
+"""Which Modal account chuck-gpu uses: status, log in, log out, switch.
 
 Credentials stay where the Modal CLI keeps them (~/.modal.toml, or
-$MODAL_CONFIG_PATH, or $MODAL_TOKEN_ID/$MODAL_TOKEN_SECRET); mgpu never
+$MODAL_CONFIG_PATH, or $MODAL_TOKEN_ID/$MODAL_TOKEN_SECRET); chuck-gpu never
 stores them anywhere else.
 """
 from __future__ import annotations
@@ -130,7 +130,7 @@ class BrowserLogin:
             env = dict(os.environ, PYTHONIOENCODING="utf-8", NO_COLOR="1", TERM="dumb",
                        COLUMNS="200")
             flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-            from mgpu.cli import modal_cli
+            from chuck_gpu.cli import modal_cli
             self.proc = subprocess.Popen(
                 modal_cli() + ["token", "new", "--activate"],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
