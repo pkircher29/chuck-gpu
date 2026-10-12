@@ -57,6 +57,7 @@ DEFAULTS = {
     "pip": [],
     "apt": [],
     "requirements": None,
+    "setup": [],   # shell commands baked into the image after apt/pip (cached by Modal)
     "exclude": [],
     "env": {},
     "secrets": [],
@@ -187,6 +188,8 @@ def build_image(cfg: dict, root: Path):
         image = image.pip_install_from_requirements(str(req))
     if cfg["pip"]:
         image = image.pip_install(*cfg["pip"])
+    if cfg["setup"]:
+        image = image.run_commands(*cfg["setup"])
     return image
 
 

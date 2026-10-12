@@ -106,6 +106,7 @@ image = "torch"              # PyTorch 2.5.1 + CUDA 12.4 + cuDNN 9
 requirements = "requirements.txt"
 pip = ["transformers"]
 apt = ["ffmpeg"]
+setup = ["git clone https://github.com/me/tool /opt/tool"]   # extra image build steps
 exclude = ["datasets/raw", "*.mp4"]
 env = { HF_HOME = "/ws/.hf" }
 timeout = 7200
