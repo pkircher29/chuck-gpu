@@ -94,7 +94,16 @@ class JobRecorder:
         with self._lock:
             tmp = self.path.with_suffix(".tmp")
             tmp.write_text(json.dumps(self.data))
-            os.replace(tmp, self.path)
+            # Windows refuses to replace a file another process has open,
+            # and the dashboard reads these constantly (seen from a Docker
+            # container writing to a bind-mounted ~/.chuck_gpu). Retry
+            # briefly; a missed update is harmless, the next one carries it.
+            for attempt in range(10):
+                try:
+                    os.replace(tmp, self.path)
+                    break
+                except PermissionError:
+                    time.sleep(0.05 * (attempt + 1))
             self._last_write = time.time()
 
     def update(self, **kw) -> None:
