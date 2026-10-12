@@ -265,13 +265,20 @@ def sync_down(vol, key: str, root: Path, changed: list[tuple[str, int]]) -> None
         log("no output files changed")
         return
     manifest = load_manifest(key)
-    for rel, _size in changed:
+    for rel, size in changed:
         dest = root / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         tmp = dest.with_name(dest.name + ".chuck_gpu-part")
         with open(tmp, "wb") as f:
             for chunk in vol.read_file(f"/{key}/{rel}"):
                 f.write(chunk)
+        # A file the job OVERWROTE can still read back as its previous
+        # version until the sandbox's volume commit lands; the size the
+        # sandbox listed tells them apart. Raise so the caller retries.
+        if tmp.stat().st_size != size:
+            got = tmp.stat().st_size
+            tmp.unlink(missing_ok=True)
+            raise RuntimeError(f"{rel}: read {got} bytes, the job wrote {size} (not committed yet)")
         os.replace(tmp, dest)
         st = dest.stat()
         # the remote already has this exact file — don't re-upload it next run
@@ -522,12 +529,12 @@ def cmd_run(args) -> int:
             f"{human(sum(s for _, s in changed))}")
     if cfg["download"]:
         # volume commits when the sandbox terminates; give it a moment to land
-        for attempt in range(10):
+        for attempt in range(30):
             try:
                 sync_down(vol, key, root, changed)
                 break
             except Exception as e:  # not yet committed
-                if attempt == 9:
+                if attempt == 29:
                     log(f"download failed: {e}")
                     job.update(detail=f"download failed: {e}"[:500])
                     job.finish("failed", code)
