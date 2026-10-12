@@ -374,7 +374,9 @@ def ensure_ui() -> None:
     import subprocess
     from chuck_gpu.ui import load_settings
     settings = load_settings()
-    if not settings["auto_ui"]:
+    # CHUCK_GPU_NO_UI: run from a container or a service, where the dashboard
+    # belongs to the host and a local one would be unreachable anyway
+    if not settings["auto_ui"] or os.environ.get("CHUCK_GPU_NO_UI"):
         return
     port = int(settings["ui_port"])
     with socket.socket() as s:
@@ -388,7 +390,7 @@ def ensure_ui() -> None:
         argv = [str(agent)] if agent.exists() else [str(exe), "ui", "--no-browser"]
     else:
         pyw = exe.with_name("pythonw.exe")
-        argv = [str(pyw if pyw.exists() else exe), "-m", "chuck-gpu", "agent"]
+        argv = [str(pyw if pyw.exists() else exe), "-m", "chuck_gpu", "agent"]
     flags = 0
     if os.name == "nt":
         flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | 0x08000000
@@ -692,10 +694,18 @@ def main(argv: list[str] | None = None) -> int:
     wh.set_defaults(func=cmd_whoami)
 
     ag = sub.add_parser("agent", help="run in the system tray: dashboard always on, job alerts")
-    ag.set_defaults(func=lambda a: __import__("chuck-gpu.agent", fromlist=["main"]).main())
+    ag.set_defaults(func=lambda a: __import__("chuck_gpu.agent", fromlist=["main"]).main())
 
     args = p.parse_args(argv)
     args.command = command
+    if os.name != "nt":
+        # a supervisor stops us with SIGTERM: treat it like Ctrl-C so `run`
+        # terminates the remote sandbox instead of leaving it billing
+        import signal
+
+        def _term(signum, frame):
+            raise KeyboardInterrupt
+        signal.signal(signal.SIGTERM, _term)
     if args.cmd in ("run", "smi", "ls", "rm"):
         require_login()
     try:

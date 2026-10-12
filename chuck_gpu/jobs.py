@@ -8,12 +8,19 @@ from __future__ import annotations
 import json
 import os
 import re
+import socket
+import threading
 import time
 import uuid
 from pathlib import Path
 
 JOBS_DIR = Path.home() / ".chuck_gpu" / "jobs"
 TERMINAL = {"done", "failed", "stopped", "lost"}
+HOST = socket.gethostname()
+# A job run on another host (e.g. inside a Docker container sharing
+# ~/.chuck_gpu) can't be pid-checked from here; it beats instead.
+HEARTBEAT_S = 60
+HEARTBEAT_LOST_S = 600
 
 # tqdm:  " 42%|████▏     | 420/1000 [01:02<01:26,  6.71it/s]"
 TQDM = re.compile(r"(\d{1,3})%\|[^|]*\|\s*(\d+)/(\d+)\s*\[(?:(\d+):)?(\d+):(\d+)<(?:(\d+):)?(\d+):(\d+)")
@@ -67,19 +74,28 @@ class JobRecorder:
         self.progress = ProgressParser()
         self._last_write = 0.0
         self.data = {
-            "id": self.id, "pid": os.getpid(), "dir": str(root), "workspace": key,
+            "id": self.id, "pid": os.getpid(), "host": HOST, "beat": time.time(),
+            "dir": str(root), "workspace": key,
             "command": command, "gpu": gpu, "image": image, "timeout": timeout,
             "phase": "uploading", "detail": "", "created": time.time(),
             "started": None, "ended": None, "exit_code": None, "sandbox_id": None,
             "progress": None, "upload": None, "download": None,
         }
+        self._lock = threading.Lock()
+        self._done = threading.Event()
         self.write()
+        threading.Thread(target=self._heartbeat, daemon=True).start()
+
+    def _heartbeat(self) -> None:
+        while not self._done.wait(HEARTBEAT_S):
+            self.update(beat=time.time())
 
     def write(self) -> None:
-        tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(self.data))
-        os.replace(tmp, self.path)
-        self._last_write = time.time()
+        with self._lock:
+            tmp = self.path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(self.data))
+            os.replace(tmp, self.path)
+            self._last_write = time.time()
 
     def update(self, **kw) -> None:
         self.data.update(kw)
@@ -103,6 +119,7 @@ class JobRecorder:
             phase = "stopped"
             self.data["detail"] = "stopped from the dashboard"
             stop_marker.unlink(missing_ok=True)
+        self._done.set()
         self.update(phase=phase, exit_code=exit_code, ended=time.time())
         self._log.close()
 
@@ -143,6 +160,13 @@ def tail_log(job_id: str, max_bytes: int = 6000) -> str:
     while lines and not lines[-1].strip():
         lines.pop()
     return "\n".join(lines[-40:])
+
+
+def job_alive(job: dict) -> bool:
+    """Whether the `chuck-gpu run` that owns this job is still running."""
+    if job.get("host", HOST) != HOST:
+        return time.time() - (job.get("beat") or job.get("created") or 0) < HEARTBEAT_LOST_S
+    return pid_alive(job.get("pid"))
 
 
 def pid_alive(pid: int) -> bool:

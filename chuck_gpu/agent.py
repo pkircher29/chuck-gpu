@@ -57,7 +57,7 @@ def launch_command() -> str:
     if getattr(sys, "frozen", False):
         return f'"{sys.executable}"'
     pyw = Path(sys.executable).with_name("pythonw.exe")
-    return f'"{pyw if pyw.exists() else sys.executable}" -m chuck-gpu agent'
+    return f'"{pyw if pyw.exists() else sys.executable}" -m chuck_gpu agent'
 
 
 def autostart_enabled() -> bool:

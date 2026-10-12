@@ -23,7 +23,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from chuck_gpu import account, gpus
-from chuck_gpu.jobs import JOBS_DIR, TERMINAL, load_jobs, pid_alive, save_job, tail_log
+from chuck_gpu.jobs import JOBS_DIR, TERMINAL, job_alive, load_jobs, save_job, tail_log
 
 SETTINGS_PATH = Path.home() / ".chuck_gpu" / "config.toml"
 SETTINGS_DEFAULTS = {"monthly_credit": 30.0, "ui_port": 8770, "auto_ui": True,
@@ -290,7 +290,7 @@ def build_state() -> dict:
     live_rate_hr = 0.0
     for job in jobs:
         # a run whose CLI died leaves an idle sandbox billing until timeout — stop it
-        if job["phase"] not in TERMINAL and not pid_alive(job.get("pid")):
+        if job["phase"] not in TERMINAL and not job_alive(job):
             if job.get("sandbox_id") and not job.get("gpu_released"):
                 try:
                     M.stop(job["sandbox_id"])
