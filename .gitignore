@@ -5,3 +5,5 @@ __pycache__/
 build/
 dist/
 packaging/mgpu.ico
+driver_shim/target/
+driver_shim/Cargo.lock

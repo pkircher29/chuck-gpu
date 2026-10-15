@@ -76,11 +76,37 @@ chuck-gpu stores no credentials of its own and sends them only to Modal.
 | | |
 |---|---|
 | `chuck-gpu run [opts] -- <cmd>` | sync up, run on GPU, sync results down |
+| `chuck-gpu driver <serve\|exec\|test\|build>` | virtual CUDA/NVML GPU driver shim (`nvcuda.dll`/`libcuda.so.1`) + Modal RPC bridge |
+| `chuck-gpu drive [--letter G:] [--gpu A100]` | mount a virtual GPU drive folder/letter that sends dropped data to Modal |
 | `chuck-gpu smi [--gpu A100]` | `nvidia-smi` on a cloud GPU (quick check, cheapest by default) |
 | `chuck-gpu ls` | list remote workspaces |
 | `chuck-gpu rm [--key NAME]` | delete this folder's remote workspace |
 | `chuck-gpu ui` | dashboard: login, live job, spend, remaining credit |
 | `chuck-gpu login` / `logout` / `whoami` | manage the connected Modal account |
+
+## Virtual GPU Driver & Drive
+
+`chuck-gpu` includes a virtual GPU driver shim (`chuck_gpu/driver.py` + `driver_shim/`) so local programs and scripts can detect a virtual NVIDIA GPU and send data/compute to Modal:
+
+1. **Native CUDA Driver & NVML Shim (`nvcuda.dll` / `nvml.dll` / `libcuda.so.1`)**:
+   ```
+   chuck-gpu driver build                  # compile native CUDA/NVML shim
+   chuck-gpu driver test                   # verify CUDA Driver API & memory roundtrip
+   chuck-gpu driver serve --gpu A100       # start local Modal RPC bridge on 127.0.0.1:8771
+   chuck-gpu driver exec -- <command ...>  # run a binary/script with the virtual GPU driver injected
+   ```
+2. **Python / PyTorch Virtual GPU Hook & Offload**:
+   ```python
+   from chuck_gpu.driver import enable_virtual_gpu, offload
+
+   enable_virtual_gpu("A100")  # patches torch.cuda so is_available() == True
+   result = offload(my_gpu_fn, tensor_input, gpu="A100")
+   ```
+3. **Virtual GPU Drive (`chuck-gpu drive`)**:
+   ```
+   chuck-gpu drive --letter G: --gpu T4
+   ```
+   Creates and mounts a virtual GPU drive (`Inbox/`, `Processing/`, `Outbox/`, `Logs/`, `Driver/`, `GPU_DEVICE_INFO.json`). Any script or payload dropped into `Inbox/` is automatically sent to Modal for GPU processing and outputs are written back to `Outbox/`.
 
 **Which GPU:** every job runs on the **cheapest** GPU (by your workspace's
 live prices, normally the T4) unless you deliberately choose another. Pick one

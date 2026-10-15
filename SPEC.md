@@ -32,7 +32,8 @@ would pay network latency. Anything you run as one command works.
 
 | Component | File | Role |
 |---|---|---|
-| CLI | `cli.py` | `chuck-gpu run`, `chuck-gpu smi`, `chuck-gpu ui`, `chuck-gpu login`, etc. |
+| CLI | `cli.py` | `chuck-gpu run`, `chuck-gpu driver`, `chuck-gpu drive`, `chuck-gpu smi`, `chuck-gpu ui`, `chuck-gpu login`, etc. |
+| Driver & Bridge | `driver.py` + `driver_shim/` | Native `nvcuda.dll`/`nvml.dll`/`libcuda.so.1` shim, Modal RPC bridge (:8771), PyTorch hook, Virtual GPU Drive |
 | Agent | `agent.py` | System tray icon, always-on dashboard, job watchdog, notifications |
 | Dashboard | `ui.py` + `static/index.html` | HTTP server (:8770), billing, spend, GPU picker, sandbox manager |
 | GPU catalog | `gpus.py` | 12 GPUs, live rates, cheapest-by-default logic, one-shot picks |
