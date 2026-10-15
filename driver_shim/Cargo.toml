@@ -1,0 +1,8 @@
+[package]
+name = "chuck_gpu_driver"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "nvcuda"
+crate-type = ["cdylib", "rlib"]
