@@ -1,12 +1,51 @@
-/* C fallback implementation of the CUDA Driver API & NVML shim for Linux/POSIX
- * when cargo is not installed in the Linux environment.
+/* C implementation of the CUDA Driver API, CUDA Runtime API, & NVML shim for Linux/POSIX
+ * (compiled to libcuda.so.1, libcudart.so.12, libnvidia-ml.so.1)
  */
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
-int cuInit(unsigned int flags) { return flags == 0 ? 0 : 1; }
+static void bridge_notify(const char* json_line) {
+    const char* addr_env = getenv("CHUCK_GPU_BRIDGE_ADDR");
+    char host[64] = "127.0.0.1";
+    int port = 8771;
+    if (addr_env && *addr_env) {
+        const char* colon = strchr(addr_env, ':');
+        if (colon) {
+            size_t len = (size_t)(colon - addr_env);
+            if (len < sizeof(host)) {
+                memcpy(host, addr_env, len);
+                host[len] = '\0';
+            }
+            port = atoi(colon + 1);
+        }
+    }
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) return;
+    struct sockaddr_in sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sin_family = AF_INET;
+    sa.sin_port = htons((uint16_t)port);
+    inet_pton(AF_INET, host, &sa.sin_addr);
+    if (connect(sock, (struct sockaddr*)&sa, sizeof(sa)) == 0) {
+        send(sock, json_line, strlen(json_line), 0);
+        send(sock, "\n", 1, 0);
+        char resp[256];
+        recv(sock, resp, sizeof(resp) - 1, 0);
+    }
+    close(sock);
+}
+
+int cuInit(unsigned int flags) {
+    if (flags != 0) return 1;
+    bridge_notify("{\"op\":\"cuInit\"}");
+    return 0;
+}
 int cuDriverGetVersion(int* v) { if (!v) return 1; *v = 12040; return 0; }
 int cuDeviceGetCount(int* c) { if (!c) return 1; *c = 1; return 0; }
 int cuDeviceGet(int* d, int ord) { if (!d || ord != 0) return 101; *d = 0; return 0; }
@@ -36,6 +75,10 @@ int cuMemAlloc_v2(uint64_t* dptr, size_t bytesize) {
     void* p = calloc(1, bytesize);
     if (!p) return 2;
     *dptr = (uint64_t)(uintptr_t)p;
+    char msg[128];
+    snprintf(msg, sizeof(msg), "{\"op\":\"cuMemAlloc\",\"dptr\":%llu,\"size\":%zu}",
+             (unsigned long long)*dptr, bytesize);
+    bridge_notify(msg);
     return 0;
 }
 int cuMemAlloc(uint64_t* dptr, size_t bytesize) { return cuMemAlloc_v2(dptr, bytesize); }
@@ -56,7 +99,13 @@ int cuMemFree_v2(uint64_t dptr) {
     return 0;
 }
 int cuMemFree(uint64_t dptr) { return cuMemFree_v2(dptr); }
-int cuCtxSynchronize(void) { return 0; }
+int cuCtxSynchronize(void) { bridge_notify("{\"op\":\"cuCtxSynchronize\"}"); return 0; }
+int cudaGetDeviceCount(int* c) { return cuDeviceGetCount(c); }
+int cudaGetDevice(int* d) { if (!d) return 1; *d = 0; return 0; }
+int cudaSetDevice(int d) { return d == 0 ? 0 : 101; }
+int cudaDriverGetVersion(int* v) { return cuDriverGetVersion(v); }
+int cudaRuntimeGetVersion(int* v) { if (!v) return 1; *v = 12040; return 0; }
+int cudaDeviceSynchronize(void) { return cuCtxSynchronize(); }
 int nvmlInit_v2(void) { return 0; }
 int nvmlShutdown(void) { return 0; }
 int nvmlDeviceGetCount_v2(unsigned int* cnt) { if (!cnt) return 2; *cnt = 1; return 0; }

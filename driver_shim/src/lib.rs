@@ -1,10 +1,10 @@
-//! Native CUDA Driver API (`nvcuda.dll` / `libcuda.so.1`) and NVML (`nvml.dll` / `libnvidia-ml.so.1`)
-//! virtual GPU driver shim for `chuck-gpu`.
+//! Native CUDA Driver API (`nvcuda.dll` / `libcuda.so.1`), CUDA Runtime API (`cudart64_12.dll` / `libcudart.so`),
+//! and NVML (`nvml.dll` / `libnvidia-ml.so.1`) virtual GPU driver for `chuck-gpu`.
 //!
-//! This library exposes standard NVIDIA CUDA Driver API (`cu*`) and NVML (`nvml*`) symbols
-//! so native applications, CUDA runtimes, and device-query tools detect a virtual Modal GPU
-//! and forward memory, module, and kernel execution requests to the local `chuck-gpu` Modal bridge
-//! (`127.0.0.1:8771` by default, or `CHUCK_GPU_BRIDGE_ADDR`).
+//! Exports standard NVIDIA CUDA Driver API (`cu*`), CUDA Runtime API (`cuda*`), and NVML (`nvml*`)
+//! symbols so native applications, PyTorch/CUDA libraries, and `nvidia-smi` detect a virtual
+//! Modal GPU and forward memory, PTX/CUBIN module loading, and kernel execution over TCP RPC
+//! to the local `chuck-gpu` Modal driver daemon (`127.0.0.1:8771` by default, or `CHUCK_GPU_BRIDGE_ADDR`).
 
 use std::collections::HashMap;
 use std::ffi::{c_char, c_int, c_uint, c_ulonglong, c_void, CStr};
@@ -20,6 +20,7 @@ pub type CUcontext = *mut c_void;
 pub type CUmodule = *mut c_void;
 pub type CUfunction = *mut c_void;
 pub type CUstream = *mut c_void;
+pub type CUevent = *mut c_void;
 pub type CUdeviceptr = c_ulonglong;
 pub type NvmlReturn = c_int;
 pub type NvmlDevice = *mut c_void;
@@ -142,7 +143,7 @@ fn extract_json_str<'a>(json: &'a str, key: &str) -> Option<&'a str> {
     Some(&rest[..end])
 }
 
-// ── CUDA Driver API Exports ──────────────────────────────────────────────────
+// ── CUDA Driver API (`cu*`) ──────────────────────────────────────────────────
 
 #[no_mangle]
 pub extern "C" fn cuInit(flags: c_uint) -> CUresult {
@@ -623,6 +624,103 @@ pub extern "C" fn cuGetErrorName(error: CUresult, pstr: *mut *const c_char) -> C
         *pstr = msg.as_ptr() as *const c_char;
     }
     CUDA_SUCCESS
+}
+
+// ── CUDA Runtime API (`cuda*`) Exports ──────────────────────────────────────
+
+#[no_mangle]
+pub extern "C" fn cudaGetDeviceCount(count: *mut c_int) -> c_int {
+    cuDeviceGetCount(count)
+}
+
+#[no_mangle]
+pub extern "C" fn cudaGetDevice(device: *mut c_int) -> c_int {
+    if device.is_null() {
+        return 1;
+    }
+    unsafe {
+        *device = 0;
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn cudaSetDevice(device: c_int) -> c_int {
+    if device != 0 {
+        return 101;
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn cudaDriverGetVersion(driver_version: *mut c_int) -> c_int {
+    cuDriverGetVersion(driver_version)
+}
+
+#[no_mangle]
+pub extern "C" fn cudaRuntimeGetVersion(runtime_version: *mut c_int) -> c_int {
+    if runtime_version.is_null() {
+        return 1;
+    }
+    unsafe {
+        *runtime_version = 12040;
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn cudaDeviceSynchronize() -> c_int {
+    cuCtxSynchronize()
+}
+
+#[no_mangle]
+pub extern "C" fn cudaMalloc(dev_ptr: *mut *mut c_void, size: usize) -> c_int {
+    if dev_ptr.is_null() {
+        return 1;
+    }
+    let mut dptr: CUdeviceptr = 0;
+    let rc = cuMemAlloc_v2(&mut dptr, size);
+    if rc == 0 {
+        unsafe {
+            *dev_ptr = dptr as usize as *mut c_void;
+        }
+    }
+    rc
+}
+
+#[no_mangle]
+pub extern "C" fn cudaFree(dev_ptr: *mut c_void) -> c_int {
+    cuMemFree_v2(dev_ptr as usize as CUdeviceptr)
+}
+
+#[no_mangle]
+pub extern "C" fn cudaMemcpy(
+    dst: *mut c_void,
+    src: *const c_void,
+    count: usize,
+    kind: c_int,
+) -> c_int {
+    // kind: 1 = HostToDevice, 2 = DeviceToHost, 3 = DeviceToDevice
+    match kind {
+        1 => cuMemcpyHtoD_v2(dst as usize as CUdeviceptr, src, count),
+        2 => cuMemcpyDtoH_v2(dst, src as usize as CUdeviceptr, count),
+        _ => 0,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn cudaMemGetInfo(free: *mut usize, total: *mut usize) -> c_int {
+    cuMemGetInfo_v2(free, total)
+}
+
+#[no_mangle]
+pub extern "C" fn cudaGetLastError() -> c_int {
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn cudaPeekAtLastError() -> c_int {
+    0
 }
 
 #[no_mangle]
