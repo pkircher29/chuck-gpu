@@ -637,6 +637,73 @@ def cmd_whoami(args) -> int:
     return 0
 
 
+def cmd_driver(args) -> int:
+    from chuck_gpu import driver
+    if args.driver_action == "build":
+        built = driver.build_native_shim(force=True)
+        for name, path in built.items():
+            log(f"built {name} -> {path}")
+        return 0
+    if args.driver_action == "test":
+        info = driver.query_native_shim()
+        print(json.dumps(info, indent=2))
+        return 0
+    if args.driver_action == "serve":
+        built = driver.build_native_shim()
+        srv, sess = driver.start_bridge_server(port=args.port, gpu=args.gpu, warm_sandbox=args.warm)
+        log(f"virtual GPU driver bridge listening on 127.0.0.1:{args.port} "
+            f"({sess.spec['name']}, {sess.spec['vram_gb']} GB VRAM)")
+        if built:
+            log(f"native shim binaries ready in {driver.DRIVER_BIN_DIR}")
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            srv.shutdown()
+            sess.stop_sandbox()
+        return 0
+    if args.driver_action == "exec":
+        if not args.command:
+            sys.exit("nothing to run: chuck-gpu driver exec [options] -- <command ...>")
+        built = driver.build_native_shim()
+        srv, sess = driver.start_bridge_server(port=args.port, gpu=args.gpu, warm_sandbox=args.warm)
+        env = dict(os.environ)
+        env["CHUCK_GPU_BRIDGE_ADDR"] = f"127.0.0.1:{args.port}"
+        env["CHUCK_GPU_MODEL"] = sess.gpu
+        env["PATH"] = str(driver.DRIVER_BIN_DIR) + os.pathsep + env.get("PATH", "")
+        if os.name != "nt" and "libcuda.so.1" in built:
+            preload = str(built["libcuda.so.1"])
+            env["LD_PRELOAD"] = f"{preload}:{env['LD_PRELOAD']}" if env.get("LD_PRELOAD") else preload
+        try:
+            import subprocess
+            return subprocess.call(args.command, env=env)
+        finally:
+            srv.shutdown()
+            sess.stop_sandbox()
+    return 0
+
+
+def cmd_drive(args) -> int:
+    from chuck_gpu import driver
+    root = Path(args.path).resolve()
+    drv = driver.VirtualGpuDrive(root=root, gpu=args.gpu, drive_letter=args.letter)
+    drv.setup()
+    log(f"virtual GPU drive ready at {root}" + (f" (mounted as {args.letter})" if args.letter else ""))
+    log(f"device: {drv.spec['name']} ({drv.spec['vram_gb']} GB VRAM)")
+    log(f"drop scripts or jobs into {drv.inbox} to process on Modal")
+    if args.once:
+        results = drv.watch_once()
+        print(json.dumps(results, indent=2))
+        return 0
+    try:
+        drv.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     for stream in (sys.stdout, sys.stderr):  # piped output on Windows defaults to cp1252
@@ -705,6 +772,21 @@ def main(argv: list[str] | None = None) -> int:
 
     ag = sub.add_parser("agent", help="run in the system tray: dashboard always on, job alerts")
     ag.set_defaults(func=lambda a: __import__("chuck_gpu.agent", fromlist=["main"]).main())
+
+    drv = sub.add_parser("driver", help="virtual CUDA/NVML GPU driver shim + Modal RPC bridge")
+    drv.add_argument("driver_action", choices=["serve", "test", "build", "exec"],
+                     help="serve: start RPC bridge; test: verify native CUDA shim; build: compile shim; exec: run command with virtual GPU shim injected")
+    drv.add_argument("--gpu", choices=GPUS, help="virtual GPU model to report and provision on Modal")
+    drv.add_argument("--port", type=int, default=8771, help="local RPC bridge port (default 8771)")
+    drv.add_argument("--warm", action="store_true", help="pre-warm the remote Modal GPU sandbox immediately")
+    drv.set_defaults(func=cmd_driver)
+
+    d = sub.add_parser("drive", help="mount a virtual GPU drive folder/letter that sends dropped data to Modal")
+    d.add_argument("--path", default=str(Path.home() / "ChuckGPUDrive"), help="local folder for the virtual GPU drive")
+    d.add_argument("--letter", help="Windows drive letter to mount via subst (e.g. G:)")
+    d.add_argument("--gpu", choices=GPUS, help="Modal GPU model to use for processing")
+    d.add_argument("--once", action="store_true", help="process current Inbox items once and exit")
+    d.set_defaults(func=cmd_drive)
 
     args = p.parse_args(argv)
     args.command = command
