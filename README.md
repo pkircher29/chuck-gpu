@@ -1,5 +1,31 @@
 # chuck-gpu — your Modal account as a CUDA GPU
 
+## Lemonade cloud session
+
+From this source checkout, run `python -m chuck_gpu.lemonade --minutes 30`.
+This starts Lemonade 11.9.0 on a 16 GB T4 with 2 CPU cores and 8 GiB RAM,
+loads Qwen3 4B Instruct, verifies a generated answer, and serves the web app
+and OpenAI-compatible API at http://127.0.0.1:13306 (API: `/api/v1`).
+The existing local Lemonade on port 13305 is preserved.
+
+The session appears in the installed Chuck GPU dashboard at
+http://127.0.0.1:8770. Use **Stop GPU**, Ctrl+C, or let the time limit expire.
+The default limit is 30 minutes; `--minutes` accepts 1–120. Cloud time is billed
+even while idle. At the workspace rates checked October 13, 2026, these
+resources cost approximately $1.07/hour, excluding storage and other fees.
+Model downloads and backend binaries persist in the Modal volume
+`chuck-gpu-lemonade-cache`; local files are not uploaded.
+
+The cloud API uses a random session key over HTTPS. The local relay holds the
+key in memory, binds only to loopback, and rejects foreign browser origins.
+HTTP API and streaming chat are supported; realtime voice WebSockets are not
+yet tunneled. `--model` selects another Lemonade model and `--port` changes the
+local port. Models must fit the selected T4. This source launcher is separate
+from the previously installed packaged CLI; it does not replace that app.
+
+Verify the relay locally without starting a GPU:
+`python -m unittest discover -s tests -v`.
+
 Run any command on a Modal cloud GPU from your own project folder, as if the
 GPU were in this PC:
 
